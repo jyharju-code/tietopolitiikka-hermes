@@ -19,7 +19,7 @@ Use these controls:
 
 ## Agent permissions
 
-WhatsApp receives only the `skills` toolset. The memory provider adds its own narrow memory tools and can ingest an explicitly marked URL. The following capabilities are intentionally absent:
+WhatsApp receives only the `skills` and `memory` toolsets. The memory provider adds its own narrow memory tools and can ingest an explicitly marked URL. The following capabilities are intentionally absent:
 
 1. Shell and process execution.
 2. General file reading and writing.
