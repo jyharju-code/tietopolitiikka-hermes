@@ -21,6 +21,11 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 
+if ! compose exec -T openviking curl -fsS http://127.0.0.1:1933/health >/dev/null 2>&1; then
+  echo "OpenViking did not become healthy; Hermes was not restarted." >&2
+  exit 1
+fi
+
 compose up -d --force-recreate hermes
 if [[ "${CLOUDFLARE_TUNNEL_ENABLED:-false}" == "true" ]]; then
   compose up -d cloudflared

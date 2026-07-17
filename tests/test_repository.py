@@ -84,6 +84,17 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("recall_max_injected_chars: 700000", template)
         self.assertIn("protect_last_n: 160", template)
 
+    def test_openviking_uses_memory_provider_variables(self):
+        entrypoint = (ROOT / "images/openviking/entrypoint.sh").read_text(encoding="utf-8")
+        self.assertIn("MEMORY_VLM_API_KEY", entrypoint)
+        self.assertIn("MEMORY_VLM_API_BASE", entrypoint)
+        self.assertIn("MEMORY_VLM_MODEL", entrypoint)
+        self.assertNotIn("DEEPSEEK_API_KEY", entrypoint)
+
+    def test_deploy_stops_if_openviking_never_becomes_healthy(self):
+        deploy = (ROOT / "ops/deploy.sh").read_text(encoding="utf-8")
+        self.assertIn("OpenViking did not become healthy", deploy)
+
     def test_compose_has_no_public_ports_or_host_socket(self):
         for name in ("docker-compose.yml", "docker-compose.tunnel.yml", "docker-compose.telegram-local.yml"):
             compose = (ROOT / name).read_text(encoding="utf-8")
