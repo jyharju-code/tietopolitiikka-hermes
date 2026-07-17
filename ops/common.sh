@@ -18,8 +18,14 @@ set +a
 : "${BACKUP_RETENTION_DAYS:=14}"
 
 compose() {
+  local compose_files=(-f "${REPO_ROOT}/docker-compose.yml")
+  if [[ "${WHATSAPP_ENABLED:-false}" == "true" ]]; then
+    compose_files+=(-f "${REPO_ROOT}/docker-compose.whatsapp.yml")
+  fi
+
   docker compose \
     --project-directory "${REPO_ROOT}" \
     --env-file "${RUNTIME_ENV}" \
+    "${compose_files[@]}" \
     "$@"
 }

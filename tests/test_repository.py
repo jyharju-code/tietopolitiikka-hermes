@@ -77,6 +77,10 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', template)
         self.assertIn("_config_version: 33", template)
         self.assertIn("WHATSAPP_ENABLED=false", example)
+        compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        overlay = (ROOT / "docker-compose.whatsapp.yml").read_text(encoding="utf-8")
+        self.assertNotIn("WHATSAPP_ENABLED", compose)
+        self.assertIn('WHATSAPP_ENABLED: "true"', overlay)
 
     def test_compose_publishes_no_ports_or_host_socket(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")

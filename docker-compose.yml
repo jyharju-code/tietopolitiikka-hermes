@@ -95,7 +95,6 @@ services:
       OPENVIKING_ACCOUNT: tietopolitiikka
       OPENVIKING_USER: whatsapp-group
       OPENVIKING_AGENT: tietopolitiikka-hermes
-      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
       WHATSAPP_MODE: bot
       WHATSAPP_ALLOWED_USERS: ${WHATSAPP_ALLOWED_USERS:-*}
       WHATSAPP_DM_POLICY: disabled
