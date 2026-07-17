@@ -102,6 +102,10 @@ class RepositorySafetyTests(unittest.TestCase):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
         self.assertGreaterEqual(compose.count("OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}"), 2)
 
+    def test_deploy_recreates_hermes_after_rendering_config(self):
+        deploy = (ROOT / "ops" / "deploy.sh").read_text(encoding="utf-8")
+        self.assertIn("compose up -d --force-recreate hermes", deploy)
+
     def test_durable_resource_requires_explicit_marker(self):
         soul = (ROOT / "config" / "hermes" / "SOUL.md").read_text(encoding="utf-8").lower()
         skill = (ROOT / "skills" / "tietopolitiikka-memory" / "SKILL.md").read_text(encoding="utf-8").lower()
