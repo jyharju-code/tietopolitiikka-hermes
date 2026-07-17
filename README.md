@@ -61,9 +61,9 @@ bash -n ops/*.sh images/openviking/*.sh
 4. Pair the dedicated WhatsApp account with `ops/pair-whatsapp.sh`.
 5. Add the account to both groups and send one message in each group.
 6. Discover the group JIDs with `ops/discover-groups.sh`.
-7. Put the two approved JIDs in `.env.runtime` and run `ops/deploy.sh` again.
+7. Put the two approved JIDs and `WHATSAPP_ENABLED=true` in `.env.runtime`, then run `ops/deploy.sh` again.
 
-The first deployment can be completed before WhatsApp pairing. Group access remains closed until step 7.
+The first deployment can be completed before WhatsApp pairing. The WhatsApp gateway is disabled and group access remains closed until step 7.
 
 ## Operations
 

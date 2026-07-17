@@ -70,10 +70,13 @@ class RepositorySafetyTests(unittest.TestCase):
 
     def test_whatsapp_safe_defaults(self):
         template = (ROOT / "config" / "hermes" / "config.yaml.template").read_text(encoding="utf-8")
+        example = (ROOT / ".env.example").read_text(encoding="utf-8")
         self.assertIn("dm_policy: disabled", template)
         self.assertIn("group_policy: allowlist", template)
         self.assertIn("require_mention: true", template)
         self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', template)
+        self.assertIn("_config_version: 33", template)
+        self.assertIn("WHATSAPP_ENABLED=false", example)
 
     def test_compose_publishes_no_ports_or_host_socket(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
