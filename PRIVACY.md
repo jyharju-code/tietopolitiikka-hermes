@@ -24,26 +24,28 @@ The operator should complete and document at least these items before production
 1. Direct messages are disabled.
 2. Only two exact group IDs are accepted.
 3. The main group requires a direct trigger for a visible reply.
-4. All messages in both approved groups are sent through Hermes and stored in OpenViking conversation sessions.
-5. Separate durable URL and document resources require `muistiin`.
-6. Vector embeddings are produced locally.
-7. No public dashboard or API is exposed.
-8. WhatsApp sessions receive no terminal or infrastructure tools.
-9. Debug logging is off by default.
-10. Backups have a defined retention period.
+4. All messages in both approved groups are archived and indexed locally in OpenViking.
+5. Passive main-group messages stop before the agent and are not sent to DeepSeek.
+6. Addressed main-group messages and all auxiliary-group messages can be sent to DeepSeek for a conversational answer.
+7. Every URL and attachment is archived and indexed automatically without a marker word.
+8. Vector embeddings are produced locally with BGE-M3.
+9. No public dashboard or API is exposed.
+10. WhatsApp sessions receive no terminal or infrastructure tools.
+11. Debug logging is off by default.
+12. Backups have a defined retention period.
 
 ## Suggested group notice
 
 The following text should be adapted with the controller contact and approved by the association before use:
 
-> Ryhmään lisätään oma Hermes-avustaja ja yhteinen hakumuisti. Molempien hyväksyttyjen ryhmien kaikki viestit tallennetaan Helsingin palvelimella toimivaan keskustelu- ja vektorimuistiin. Pääryhmässä Hermes vastaa vain, kun se mainitaan, sille vastataan tai viesti alkaa sanalla Hermes. Tietopolitiikka.hermes-ryhmässä jokainen viesti voidaan tulkita avustajalle osoitetuksi. Erillinen URL tai dokumentti indeksoidaan pysyväksi lähteeksi vain pyynnöllä muistiin. Ryhmäviestejä lähetetään DeepSeekin rajapintaan käsiteltäväksi Kiinassa. Voit pyytää omien tietojesi tarkastusta, korjausta tai poistamista yhteyshenkilöltä [YHTEYSTIETO]. Älä lähetä ryhmiin salassa pidettäviä tai sivullisten arkaluonteisia tietoja.
+> Ryhmään lisätään oma Hermes-avustaja ja yhteinen hakumuisti. Molempien hyväksyttyjen ryhmien kaikki viestit, URLit ja liitteet tallennetaan sekä indeksoidaan Helsingin palvelimella. Pääryhmässä Hermes vastaa vain, kun se mainitaan, sille vastataan tai viesti alkaa sanalla Hermes. Muut pääryhmän viestit käsitellään vain paikallisella BGE-M3-indeksoinnilla, eikä niitä lähetetä DeepSeekille. Tietopolitiikka.hermes-ryhmässä jokainen viesti tulkitaan avustajalle osoitetuksi ja voidaan lähettää DeepSeekin rajapintaan käsiteltäväksi Kiinassa. Myös Hermekselle osoitetut pääryhmän viestit voidaan lähettää DeepSeekille vastausta varten. Voit pyytää omien tietojesi tarkastusta, korjausta tai poistamista yhteyshenkilöltä [YHTEYSTIETO]. Älä lähetä ryhmiin salassa pidettäviä tai sivullisten arkaluonteisia tietoja.
 
 Consent should be recorded outside the public repository. Never commit member names, phone numbers, WhatsApp group IDs, or consent records here.
 
 ## Retention proposal
 
-1. Complete Hermes conversation sessions from both groups: 90 days.
-2. Explicit OpenViking resources: until deleted by the group or controller.
+1. Complete locally indexed conversation records from both groups: 90 days.
+2. Automatically archived URL and attachment resources: until deleted by the group or controller.
 3. Extracted conversational memories: review every 90 days.
 4. Application logs: 14 days.
 5. Backups: 14 daily copies.

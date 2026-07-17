@@ -28,8 +28,8 @@
       "provider": "ollama",
       "api_base": "http://ollama:11434/v1",
       "api_key": "local",
-      "model": "nomic-embed-text",
-      "dimension": 768,
+      "model": "bge-m3",
+      "dimension": 1024,
       "input": "text"
     }
   },

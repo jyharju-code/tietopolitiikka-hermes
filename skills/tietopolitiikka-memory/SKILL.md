@@ -9,24 +9,19 @@ Use this skill whenever a WhatsApp member asks to store, retrieve, cite, inspect
 
 ## Automatic conversation memory
 
-Every processed message from both approved WhatsApp groups is synchronized to
-an OpenViking session automatically, including main-group turns that produce
-`NO_REPLY`. Session commit extracts searchable conversational memories. Do not
-require an explicit command for ordinary conversation and do not duplicate each
-turn with `viking_remember`.
+Every message from both approved WhatsApp groups is archived and indexed by the
+local gateway hook before conversational routing. Unaddressed main-group
+messages stop there and never reach the conversational model. Addressed turns
+can also be synchronized to an OpenViking session. Do not duplicate each turn
+with `viking_remember`.
 
 ## Store a URL or attachment
 
-Store a resource only when the current user message contains the Finnish word `muistiin` as a separate word.
-
-1. Identify the URL or local attachment path from the current message only.
-2. Reject private network URLs, credential URLs, and paths outside the current inbound media cache.
-3. Call `viking_add_resource` with the exact source.
-4. Use the optional instruction to retain title, author, publication date, source URL, and a compact Finnish abstract.
-5. Confirm only after the tool reports success.
-6. Keep the confirmation to one or two sentences.
-
-If there is no `muistiin` marker, do not create a separate durable URL or document resource. The surrounding message still belongs to automatic conversation memory.
+Every URL and attachment in an approved group is archived and indexed
+automatically by the local gateway hook. No marker word is required. Do not call
+`viking_add_resource` for the current message, because that would duplicate the
+resource and could invoke a remote analysis path. If a member asks whether an
+item was stored, search for it and report the result in one or two sentences.
 
 ## Store a short fact
 

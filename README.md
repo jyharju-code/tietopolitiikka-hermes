@@ -5,13 +5,13 @@ Tietopolitiikka Hermes is a self-hosted group assistant for two private WhatsApp
 1. The main group, where every message is archived but Hermes answers only when mentioned, addressed by name, or replied to.
 2. The `tietopolitiikka.hermes` group, where every message is treated as a conversation with Hermes.
 
-The stack runs Nous Research Hermes Agent, OpenViking, and a local Ollama embedding model. DeepSeek provides the conversational model and OpenViking text analysis. Embeddings and the complete knowledge store stay on the server.
+The stack runs Nous Research Hermes Agent, OpenViking, and a local Ollama embedding model. DeepSeek provides conversational answers only for messages routed to the agent. Passive main-group messages, URL extraction, attachment extraction, embeddings, and the complete knowledge store stay on the server.
 
 ## Design goals
 
 1. Keep replies short enough for a real WhatsApp conversation.
 2. Preserve the complete conversation history of both approved groups.
-3. Require the word `muistiin` before a document or URL becomes a permanent shared resource.
+3. Archive and index every URL and attachment automatically.
 4. Keep every stored resource traceable to its source.
 5. Give WhatsApp sessions no terminal, file editing, browser automation, cron, or infrastructure tools.
 6. Run without public HTTP ports.
@@ -24,27 +24,18 @@ The stack runs Nous Research Hermes Agent, OpenViking, and a local Ollama embedd
 | Hermes Agent | Conversation, group routing, tools, and WhatsApp gateway |
 | Baileys bridge | Unofficial WhatsApp Web connection used by Hermes |
 | OpenViking | Shared semantic memory and source library |
-| Ollama | Local `nomic-embed-text` embeddings |
-| DeepSeek API | Short answers and text analysis |
+| Ollama | Local multilingual `bge-m3` embeddings |
+| DeepSeek API | Short answers to messages routed to Hermes |
 
 Hermes uses an unofficial WhatsApp Web bridge. A dedicated bot number is required. Account restrictions and temporary protocol breakage remain possible. See [SECURITY.md](SECURITY.md).
 
 ## Safe default behavior
 
-The committed configuration blocks all WhatsApp groups until two exact group JIDs are supplied. Direct messages are disabled. Both approved groups enter the agent session so their complete conversation history reaches OpenViking. In the main group, the model returns `NO_REPLY` unless Hermes was directly addressed. The auxiliary group permits normal free response.
+The committed configuration blocks all WhatsApp groups until two exact group JIDs are supplied. Direct messages are disabled. Every message from either approved group is archived and indexed locally. An unaddressed main-group message stops in the local ingest hook before the Hermes agent, so it is not sent to DeepSeek. A directly addressed main-group message and every auxiliary-group message enter the conversational agent.
 
-Permanent storage is explicit:
+Every URL is fetched through an SSRF-protected local extractor. Every available attachment is copied into local storage. Text, HTML, PDF, DOCX, PPTX, XLSX, and image OCR content is indexed automatically. Unsupported binary formats retain their local original plus searchable metadata and a SHA-256 digest.
 
-```text
-muistiin https://example.org/report
-```
-
-```text
-muistiin
-[attached PDF]
-```
-
-All conversation in both approved groups is written to an OpenViking session immediately. After 30 minutes of inactivity, the session is committed and OpenViking extracts searchable conversational memories. The `muistiin` marker controls only separate long-lived URL and document resources, not conversation capture.
+The `muistiin` marker is not required. Raw messages and extracted resources are written directly through OpenViking's content API and embedded with local BGE-M3. Addressed conversations can additionally produce Hermes session memories.
 
 ## Local validation
 

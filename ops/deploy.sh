@@ -5,8 +5,8 @@ source "$(dirname "$0")/common.sh"
 
 "${REPO_ROOT}/ops/bootstrap.sh"
 
-compose pull hermes ollama ollama-init
-compose build --pull openviking
+compose pull ollama ollama-init
+compose build --pull openviking hermes
 compose up -d ollama
 compose run --rm ollama-init
 compose up -d openviking

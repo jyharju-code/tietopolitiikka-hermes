@@ -8,7 +8,7 @@ services:
       - ${DATA_ROOT}/ollama:/root/.ollama
     networks:
       - memory
-    mem_limit: 1280m
+    mem_limit: 2g
     cpus: 1.50
     security_opt:
       - no-new-privileges:true
@@ -35,7 +35,7 @@ services:
     environment:
       OLLAMA_HOST: http://ollama:11434
     entrypoint: ["/bin/sh", "-c"]
-    command: ["ollama pull nomic-embed-text"]
+    command: ["ollama pull bge-m3"]
     networks:
       - memory
     mem_limit: 512m
@@ -81,7 +81,12 @@ services:
         max-file: "3"
 
   hermes:
-    image: ${HERMES_IMAGE}
+    build:
+      context: .
+      dockerfile: images/hermes/Dockerfile
+      args:
+        HERMES_BASE_IMAGE: ${HERMES_IMAGE}
+    image: tietopolitiikka-hermes-agent:local
     restart: unless-stopped
     depends_on:
       openviking:
@@ -101,7 +106,7 @@ services:
       WHATSAPP_GROUP_POLICY: allowlist
       WHATSAPP_GROUP_ALLOWED_USERS: ${WHATSAPP_MAIN_GROUP_JID:-},${WHATSAPP_HERMES_GROUP_JID:-}
       WHATSAPP_REQUIRE_MENTION: "true"
-      WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_MAIN_GROUP_JID:-},${WHATSAPP_HERMES_GROUP_JID:-}
+      WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_HERMES_GROUP_JID:-}
       WHATSAPP_DEBUG: "false"
     volumes:
       - ${DATA_ROOT}/hermes:/opt/data

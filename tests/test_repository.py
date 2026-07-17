@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -14,6 +15,15 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_render_module():
     path = ROOT / "ops" / "render-config.py"
     spec = importlib.util.spec_from_file_location("render_config", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_ingest_module():
+    path = ROOT / "images" / "hermes" / "tietopolitiikka_ingest_hook.py"
+    spec = importlib.util.spec_from_file_location("tietopolitiikka_ingest_hook_test", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -77,10 +87,10 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("require_mention: true", template)
         self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', template)
         free_response = template.split("free_response_chats:", 1)[1].split("unauthorized_dm_behavior:", 1)[0]
-        self.assertIn('${WHATSAPP_MAIN_GROUP_JID}', free_response)
+        self.assertNotIn('${WHATSAPP_MAIN_GROUP_JID}', free_response)
         self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', free_response)
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-        self.assertIn("WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_MAIN_GROUP_JID:-},${WHATSAPP_HERMES_GROUP_JID:-}", compose)
+        self.assertIn("WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_HERMES_GROUP_JID:-}", compose)
         self.assertIn("_config_version: 33", template)
         self.assertIn("WHATSAPP_ENABLED=false", example)
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
@@ -103,6 +113,8 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn('"auth_mode": "trusted"', config)
         self.assertIn('"root_api_key": "${OPENVIKING_API_KEY}"', config)
         self.assertIn('"api_base": "http://ollama:11434/v1"', config)
+        self.assertIn('"model": "bge-m3"', config)
+        self.assertIn('"dimension": 1024', config)
 
     def test_openviking_key_reaches_both_services(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
@@ -114,20 +126,95 @@ class RepositorySafetyTests(unittest.TestCase):
         deploy = (ROOT / "ops" / "deploy.sh").read_text(encoding="utf-8")
         self.assertIn("compose up -d --force-recreate hermes", deploy)
 
-    def test_durable_resource_requires_explicit_marker(self):
+    def test_resources_are_automatically_indexed_locally(self):
         soul = (ROOT / "config" / "hermes" / "SOUL.md").read_text(encoding="utf-8").lower()
         skill = (ROOT / "skills" / "tietopolitiikka-memory" / "SKILL.md").read_text(encoding="utf-8").lower()
-        self.assertIn("muistiin", soul)
-        self.assertIn("only when", skill)
-        self.assertIn("automatic conversation memory", skill.lower())
+        hook = (ROOT / "images" / "hermes" / "tietopolitiikka_ingest_hook.py").read_text(encoding="utf-8")
+        self.assertIn("sanaa `muistiin` ei tarvita", soul)
+        self.assertIn("every url and attachment", skill)
+        self.assertIn("/api/v1/content/write", hook)
+        self.assertNotIn("/api/v1/resources", hook)
+        self.assertNotIn("DEEPSEEK", hook.upper())
 
     def test_all_approved_group_conversation_is_archived(self):
         soul = (ROOT / "config" / "hermes" / "SOUL.md").read_text(encoding="utf-8")
         architecture = (ROOT / "ARCHITECTURE.md").read_text(encoding="utf-8")
         template = (ROOT / "config" / "hermes" / "config.yaml.template").read_text(encoding="utf-8")
-        self.assertIn("jokainen viesti tallentuu automaattisesti", soul)
-        self.assertIn("Every main-group message enters", architecture)
+        self.assertIn("jokainen viesti tallentuu ja indeksoituu automaattisesti", soul)
+        self.assertIn("Every main-group message enters the local archive", architecture)
+        self.assertIn("DeepSeek does not receive these passive messages", architecture)
         self.assertIn("session_inactivity_minutes: 30", template)
+
+    def test_derived_hermes_image_installs_fail_closed_hook(self):
+        compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        dockerfile = (ROOT / "images" / "hermes" / "Dockerfile").read_text(encoding="utf-8")
+        patcher = (ROOT / "images" / "hermes" / "patch_whatsapp_adapter.py").read_text(encoding="utf-8")
+        self.assertIn("dockerfile: images/hermes/Dockerfile", compose)
+        self.assertIn("HERMES_BASE_IMAGE: ${HERMES_IMAGE}", compose)
+        self.assertIn("patch_whatsapp_adapter.py", dockerfile)
+        self.assertIn("await archive_whatsapp_event(event, data, passive_ingest=passive_ingest)", patcher)
+        self.assertIn("if passive_ingest:\\n                return None", patcher)
+
+
+class LocalIngestTests(unittest.TestCase):
+    def test_only_allowed_main_group_can_use_passive_path(self):
+        module = load_ingest_module()
+
+        class Adapter:
+            @staticmethod
+            def _is_broadcast_chat(chat_id):
+                return False
+
+            @staticmethod
+            def _is_group_allowed(chat_id):
+                return chat_id == "main@g.us"
+
+        with mock.patch.dict(os.environ, {"WHATSAPP_MAIN_GROUP_JID": "main@g.us"}):
+            self.assertTrue(
+                module.is_passive_main_message(
+                    {"chatId": "main@g.us", "isGroup": True}, Adapter()
+                )
+            )
+            self.assertFalse(
+                module.is_passive_main_message(
+                    {"chatId": "other@g.us", "isGroup": True}, Adapter()
+                )
+            )
+            self.assertFalse(
+                module.is_passive_main_message(
+                    {"chatId": "main@g.us", "isGroup": False}, Adapter()
+                )
+            )
+
+    def test_spool_captures_urls_and_local_attachments(self):
+        module = load_ingest_module()
+
+        class Event:
+            text = "Lue https://example.org/report.pdf."
+            media_urls = []
+            media_types = []
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            attachment = root / "report.txt"
+            attachment.write_text("local attachment", encoding="utf-8")
+            Event.media_urls = [str(attachment)]
+            Event.media_types = ["text/plain"]
+            module.SPOOL_ROOT = root / "spool"
+            module.FILE_ROOT = root / "files"
+            path = module._create_spool(
+                Event(),
+                {
+                    "chatId": "main@g.us",
+                    "messageId": "message-1",
+                    "timestamp": 1_700_000_000,
+                },
+                True,
+            )
+            payload = __import__("json").loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["urls"], ["https://example.org/report.pdf"])
+            self.assertTrue(Path(payload["media"][0]["path"]).is_file())
+            self.assertTrue(payload["passive_ingest"])
 
 
 class RenderConfigTests(unittest.TestCase):

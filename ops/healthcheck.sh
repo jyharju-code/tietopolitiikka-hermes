@@ -5,7 +5,7 @@ source "$(dirname "$0")/common.sh"
 
 compose ps
 
-if ! compose exec -T ollama ollama show nomic-embed-text >/dev/null; then
+if ! compose exec -T ollama ollama show bge-m3 >/dev/null; then
   echo "Ollama embedding model is unavailable." >&2
   exit 1
 fi
