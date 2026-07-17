@@ -72,6 +72,7 @@ class RepositorySafetyTests(unittest.TestCase):
         template = (ROOT / "config" / "hermes" / "config.yaml.template").read_text(encoding="utf-8")
         example = (ROOT / ".env.example").read_text(encoding="utf-8")
         self.assertIn("dm_policy: disabled", template)
+        self.assertIn("whatsapp:\n  enabled: false", template)
         self.assertIn("group_policy: allowlist", template)
         self.assertIn("require_mention: true", template)
         self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', template)

@@ -47,6 +47,7 @@ platform_toolsets:
   cli: [skills]
 
 whatsapp:
+  enabled: false
   dm_policy: disabled
   group_policy: allowlist
   group_allow_from:
