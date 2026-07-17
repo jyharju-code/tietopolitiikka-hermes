@@ -35,9 +35,9 @@
   },
   "vlm": {
     "provider": "openai",
-    "api_base": "https://api.deepseek.com/v1",
-    "api_key": "${DEEPSEEK_API_KEY}",
-    "model": "${DEEPSEEK_MODEL}",
-    "max_concurrent": 2
+    "api_base": "${MEMORY_VLM_API_BASE}",
+    "api_key": "${MEMORY_VLM_API_KEY}",
+    "model": "${MEMORY_VLM_MODEL}",
+    "max_concurrent": 1
   }
 }

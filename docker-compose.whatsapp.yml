@@ -1,4 +1,0 @@
-services:
-  hermes:
-    environment:
-      WHATSAPP_ENABLED: "true"

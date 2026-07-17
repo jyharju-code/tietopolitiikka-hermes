@@ -1,9 +1,8 @@
-"""Local, model-free WhatsApp ingestion for Tietopolitiikka Hermes.
+"""Local Telegram ingestion for Tietopolitiikka Hermes.
 
-The hook archives every inbound message. Unaddressed main-group messages stop
-after this hook and never enter the conversational model. Public URLs and local
-attachments are extracted locally and written through OpenViking content/write,
-which queues only the configured local embedding model.
+Every event accepted from the exact configured Telegram supergroup is written
+to a durable local spool before agent routing. Public URLs and cached Telegram
+attachments are extracted locally and written through OpenViking content/write.
 """
 
 from __future__ import annotations
@@ -62,15 +61,35 @@ def _timestamp(data: dict[str, Any]) -> datetime:
         return datetime.now(tz=timezone.utc)
 
 
-def is_passive_main_message(data: dict[str, Any], adapter: Any) -> bool:
-    """Accept an allowed, unaddressed main-group message for local ingest only."""
-    main_jid = os.environ.get("WHATSAPP_MAIN_GROUP_JID", "").strip()
-    chat_id = str(data.get("chatId") or "").strip()
-    if not main_jid or chat_id != main_jid or not data.get("isGroup"):
+def _event_value(event: Any, name: str, default: Any = "") -> Any:
+    value = getattr(event, name, default)
+    return default if value is None else value
+
+
+def _telegram_event_data(event: Any) -> dict[str, Any]:
+    source = getattr(event, "source", None)
+    metadata = getattr(event, "metadata", None)
+    if not isinstance(metadata, dict):
+        metadata = {}
+    return {
+        "chatId": str(getattr(source, "chat_id", "") or metadata.get("chat_id") or ""),
+        "chatName": str(metadata.get("chat_title") or metadata.get("chat_name") or ""),
+        "senderId": str(getattr(source, "user_id", "") or metadata.get("user_id") or ""),
+        "senderName": str(metadata.get("sender_name") or metadata.get("from_name") or ""),
+        "messageId": str(_event_value(event, "message_id", metadata.get("message_id", ""))),
+        "timestamp": metadata.get("timestamp") or metadata.get("date"),
+        "threadId": str(getattr(source, "thread_id", "") or metadata.get("message_thread_id") or ""),
+        "isGroup": True,
+    }
+
+
+def is_allowed_telegram_event(event: Any) -> bool:
+    """Allow ingestion only from the exact configured Telegram supergroup."""
+    allowed_chat = os.environ.get("TELEGRAM_GROUP_ID", "").strip()
+    if not allowed_chat:
         return False
-    if adapter._is_broadcast_chat(chat_id):
-        return False
-    return bool(adapter._is_group_allowed(chat_id))
+    data = _telegram_event_data(event)
+    return data["chatId"] == allowed_chat
 
 
 def _copy_media(event: Any, message_key: str) -> list[dict[str, str]]:
@@ -92,7 +111,7 @@ def _copy_media(event: Any, message_key: str) -> list[dict[str, str]]:
     return copied
 
 
-def _create_spool(event: Any, data: dict[str, Any], passive_ingest: bool) -> Path:
+def _create_spool(event: Any, data: dict[str, Any]) -> Path:
     chat_id = str(data.get("chatId") or "unknown-chat")
     message_id = str(data.get("messageId") or "")
     body = str(getattr(event, "text", "") or data.get("body") or "")
@@ -102,12 +121,13 @@ def _create_spool(event: Any, data: dict[str, Any], passive_ingest: bool) -> Pat
     payload = {
         "version": 1,
         "key": key,
-        "passive_ingest": bool(passive_ingest),
+        "platform": "telegram",
         "chat_id": chat_id,
         "chat_name": str(data.get("chatName") or ""),
         "sender_id": str(data.get("senderId") or data.get("from") or ""),
         "sender_name": str(data.get("senderName") or ""),
         "message_id": message_id,
+        "thread_id": str(data.get("threadId") or ""),
         "timestamp": created.isoformat(),
         "body": body,
         "urls": urls,
@@ -130,7 +150,7 @@ def _headers() -> dict[str, str]:
         "X-API-Key": api_key,
         "Authorization": f"Bearer {api_key}",
         "X-OpenViking-Account": os.environ.get("OPENVIKING_ACCOUNT", "tietopolitiikka"),
-        "X-OpenViking-User": os.environ.get("OPENVIKING_USER", "whatsapp-group"),
+        "X-OpenViking-User": os.environ.get("OPENVIKING_USER", "telegram-core"),
         "X-OpenViking-Actor-Peer": os.environ.get("OPENVIKING_AGENT", "tietopolitiikka-hermes"),
     }
 
@@ -187,13 +207,13 @@ def _message_markdown(payload: dict[str, Any]) -> str:
     url_lines = [f"- {url}" for url in payload.get("urls", [])]
     return "\n".join(
         [
-            "# WhatsApp message",
+            "# Telegram message",
             "",
             f"Chat: {payload.get('chat_name') or payload.get('chat_id')}",
             f"Sender: {payload.get('sender_name') or payload.get('sender_id')}",
             f"Timestamp: {payload.get('timestamp')}",
             f"Message ID: {payload.get('message_id')}",
-            f"Passive local ingest: {str(bool(payload.get('passive_ingest'))).lower()}",
+            f"Topic ID: {payload.get('thread_id') or 'general'}",
             "",
             "## Message",
             "",
@@ -310,7 +330,7 @@ def _extract_path(path: Path, mime_type: str = "") -> str:
 
 async def _index_url(url: str) -> None:
     url_key = _sha(url)[:32]
-    base_uri = f"viking://user/whatsapp-group/resources/whatsapp/urls/{url_key}"
+    base_uri = f"viking://user/telegram-core/resources/telegram/urls/{url_key}"
     try:
         content, content_type, final_url = await _download_public_url(url)
         FILE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -340,7 +360,7 @@ async def _index_media(item: dict[str, str], message_key: str, index: int) -> No
     path_value = item.get("path") or ""
     source = item.get("source") or ""
     mime_type = item.get("mime") or mimetypes.guess_type(path_value)[0] or "application/octet-stream"
-    base_uri = f"viking://user/whatsapp-group/resources/whatsapp/files/{message_key}-{index:02d}"
+    base_uri = f"viking://user/telegram-core/resources/telegram/files/{message_key}-{index:02d}"
     if path_value and Path(path_value).is_file():
         path = Path(path_value)
         extracted = await asyncio.to_thread(_extract_path, path, mime_type)
@@ -349,7 +369,7 @@ async def _index_media(item: dict[str, str], message_key: str, index: int) -> No
         text = f"Remote attachment source: {source}\nMIME: {mime_type}"
     else:
         text = f"Attachment metadata only. Source: {source}\nMIME: {mime_type}"
-    await _write_chunks(base_uri, "Automatically indexed WhatsApp attachment", text)
+    await _write_chunks(base_uri, "Automatically indexed Telegram attachment", text)
 
 
 async def _process_spool(path: Path) -> None:
@@ -357,7 +377,7 @@ async def _process_spool(path: Path) -> None:
     chat_key = _sha(payload.get("chat_id", ""))[:16]
     date_key = str(payload.get("timestamp") or "unknown")[:10]
     message_uri = (
-        "viking://user/whatsapp-group/resources/whatsapp/messages/"
+        "viking://user/telegram-core/resources/telegram/messages/"
         f"{chat_key}/{_safe_segment(date_key, 'unknown-date')}/{payload['key']}.md"
     )
     await _write_content(message_uri, _message_markdown(payload))
@@ -390,11 +410,14 @@ async def _drain_worker() -> None:
                 await asyncio.sleep(2)
 
 
-async def archive_whatsapp_event(event: Any, data: dict[str, Any], *, passive_ingest: bool) -> None:
-    """Durably spool an event and schedule model-free local indexing."""
+async def archive_telegram_event(event: Any) -> None:
+    """Durably spool an allowed Telegram event and schedule local indexing."""
     global _WORKER_TASK, _WORKER_WAKEUP
+    if not is_allowed_telegram_event(event):
+        return
     try:
-        await asyncio.to_thread(_create_spool, event, data, passive_ingest)
+        data = _telegram_event_data(event)
+        await asyncio.to_thread(_create_spool, event, data)
         if _WORKER_WAKEUP is None:
             _WORKER_WAKEUP = asyncio.Event()
         if _WORKER_TASK is None or _WORKER_TASK.done():

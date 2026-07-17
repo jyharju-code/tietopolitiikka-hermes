@@ -1,12 +1,12 @@
 _config_version: 33
 
 model:
-  provider: deepseek
-  default: ${DEEPSEEK_MODEL}
+  provider: ${LLM_PROVIDER}
+  default: ${LLM_MODEL}
   max_tokens: 350
 
 agent:
-  max_turns: 18
+  max_turns: 24
   verbose: false
   reasoning_effort: low
 
@@ -19,12 +19,14 @@ display:
   long_running_notifications: false
   background_process_notifications: off
 
+# Keep a large live window. DeepSeek V4 Flash accepts one million tokens and
+# Mistral Small 4 accepts 256k, so 200k is a portable normal target.
 compression:
   enabled: true
-  threshold: 0.55
-  target_ratio: 0.25
-  protect_last_n: 12
-  protect_first_n: 2
+  threshold: 0.82
+  target_ratio: 0.62
+  protect_last_n: 160
+  protect_first_n: 4
 
 memory:
   memory_enabled: true
@@ -33,35 +35,40 @@ memory:
   openviking:
     endpoint: http://openviking:1933
     account: tietopolitiikka
-    user: whatsapp-group
+    user: telegram-core
     agent: tietopolitiikka-hermes
-    recall_limit: 6
-    recall_score_threshold: 0.2
-    recall_max_injected_chars: 3500
-    recall_timeout_seconds: 4.0
-  nudge_interval: 8
-  flush_min_turns: 4
+    recall_limit: 160
+    recall_score_threshold: 0.16
+    recall_max_injected_chars: 700000
+    recall_timeout_seconds: 12.0
+  nudge_interval: 12
+  flush_min_turns: 6
 
 platform_toolsets:
-  whatsapp: [skills, memory]
+  telegram: [skills, memory]
   cli: [skills, memory]
 
-whatsapp:
-  enabled: false
+telegram:
+  enabled: true
   dm_policy: disabled
   group_policy: allowlist
-  group_allow_from:
-    - "${WHATSAPP_MAIN_GROUP_JID}"
-    - "${WHATSAPP_HERMES_GROUP_JID}"
-  require_mention: true
-  mention_patterns:
-    - '^\\s*(?:@)?hermes\\b'
+  group_allowed_chats:
+    - "${TELEGRAM_GROUP_ID}"
+  allowed_chats:
+    - "${TELEGRAM_GROUP_ID}"
+  require_mention: false
+  observe_unmentioned_group_messages: false
   free_response_chats:
-    - "${WHATSAPP_HERMES_GROUP_JID}"
+    - "${TELEGRAM_GROUP_ID}"
+  reply_to_mode: first
   unauthorized_dm_behavior: ignore
+  disable_link_previews: false
+  extra:
+    base_url: "${TELEGRAM_API_BASE_URL}"
+    local_mode: ${TELEGRAM_LOCAL_MODE}
 
 gateway:
-  session_inactivity_minutes: 30
+  session_inactivity_minutes: 240
 
 tool_loop_guardrails:
   warnings_enabled: true

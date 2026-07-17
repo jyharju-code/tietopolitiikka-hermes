@@ -4,12 +4,16 @@ services:
   ollama:
     image: ${OLLAMA_IMAGE}
     restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 10m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
     volumes:
       - ${DATA_ROOT}/ollama:/root/.ollama
     networks:
       - memory
-    mem_limit: 3g
-    cpus: 1.50
+    mem_limit: 1600m
+    cpus: 1.25
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -20,7 +24,7 @@ services:
       timeout: 10s
       retries: 12
       start_period: 20s
-    logging:
+    logging: &logging
       driver: json-file
       options:
         max-size: 10m
@@ -38,8 +42,8 @@ services:
     command: ["ollama pull bge-m3"]
     networks:
       - memory
-    mem_limit: 512m
-    cpus: 1.00
+    mem_limit: 256m
+    cpus: 0.75
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -54,16 +58,17 @@ services:
       ollama-init:
         condition: service_completed_successfully
     environment:
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+      MEMORY_VLM_API_KEY: ${MEMORY_VLM_API_KEY:-${DEEPSEEK_API_KEY}}
+      MEMORY_VLM_API_BASE: ${MEMORY_VLM_API_BASE:-https://api.deepseek.com/v1}
+      MEMORY_VLM_MODEL: ${MEMORY_VLM_MODEL:-deepseek-v4-flash}
       OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}
     volumes:
       - ${DATA_ROOT}/openviking:/data
       - ./config/openviking/ov.conf.template:/config/ov.conf.template:ro
     networks:
       - memory
-    mem_limit: 2g
-    cpus: 1.50
+    mem_limit: 900m
+    cpus: 1.00
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -74,11 +79,7 @@ services:
       timeout: 10s
       retries: 12
       start_period: 90s
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
+    logging: *logging
 
   hermes:
     build:
@@ -95,25 +96,34 @@ services:
     environment:
       HERMES_HOME: /opt/data
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      MISTRAL_BASE_URL: ${MISTRAL_BASE_URL:-https://api.eu.mistral.ai/v1}
       OPENVIKING_ENDPOINT: http://openviking:1933
       OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}
       OPENVIKING_ACCOUNT: tietopolitiikka
-      OPENVIKING_USER: whatsapp-group
+      OPENVIKING_USER: telegram-core
       OPENVIKING_AGENT: tietopolitiikka-hermes
-      WHATSAPP_MODE: bot
-      WHATSAPP_ALLOWED_USERS: ${WHATSAPP_ALLOWED_USERS:-*}
-      WHATSAPP_DM_POLICY: disabled
-      WHATSAPP_GROUP_POLICY: allowlist
-      WHATSAPP_GROUP_ALLOWED_USERS: ${WHATSAPP_MAIN_GROUP_JID:-},${WHATSAPP_HERMES_GROUP_JID:-}
-      WHATSAPP_REQUIRE_MENTION: "true"
-      WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_HERMES_GROUP_JID:-}
-      WHATSAPP_DEBUG: "false"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_GROUP_ID: ${TELEGRAM_GROUP_ID:-}
+      TELEGRAM_ALLOWED_CHATS: ${TELEGRAM_GROUP_ID:-}
+      TELEGRAM_GROUP_ALLOWED_CHATS: ${TELEGRAM_GROUP_ID:-}
+      TELEGRAM_REQUIRE_MENTION: "false"
+      TELEGRAM_REPLY_TO_MODE: first
+      TELEGRAM_API_BASE_URL: ${TELEGRAM_API_BASE_URL:-}
+      HERMES_DASHBOARD: "true"
+      HERMES_DASHBOARD_HOST: 0.0.0.0
+      HERMES_DASHBOARD_PORT: "9119"
+      HERMES_DASHBOARD_PUBLIC_URL: ${HERMES_DASHBOARD_PUBLIC_URL:-https://tietopolitiikka.pages.dev}
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}
+      HERMES_DASHBOARD_FILES_ROOT: /opt/data/dashboard-files
     volumes:
       - ${DATA_ROOT}/hermes:/opt/data
     networks:
       - memory
-    mem_limit: 1536m
-    cpus: 1.50
+      - edge
+    mem_limit: 1g
+    cpus: 1.25
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -125,13 +135,18 @@ services:
       - KILL
       - SETGID
       - SETUID
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-u", "${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}:${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}", "http://127.0.0.1:9119/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    logging: *logging
 
 networks:
   memory:
     internal: false
+    driver: bridge
+  edge:
+    internal: true
     driver: bridge

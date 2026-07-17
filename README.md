@@ -1,79 +1,93 @@
 # Tietopolitiikka Hermes
 
-Tietopolitiikka Hermes is a self-hosted group assistant for two private WhatsApp groups:
+Tietopolitiikka Hermes is a self-hosted group assistant for one private
+Telegram supergroup. Every accepted message, URL, and attachment is archived
+and indexed locally with BGE-M3. The same Hermes instance is available through
+an authenticated web dashboard at `tietopolitiikka.pages.dev`.
 
-1. The main group, where every message is archived but Hermes answers only when mentioned, addressed by name, or replied to.
-2. The `tietopolitiikka.hermes` group, where every message is treated as a conversation with Hermes.
+## User surfaces
 
-The stack runs Nous Research Hermes Agent, OpenViking, and a local Ollama embedding model. DeepSeek provides conversational answers only for messages routed to the agent. Passive main-group messages, URL extraction, attachment extraction, embeddings, and the complete knowledge store stay on the server.
-
-## Design goals
-
-1. Keep replies short enough for a real WhatsApp conversation.
-2. Preserve the complete conversation history of both approved groups.
-3. Archive and index every URL and attachment automatically.
-4. Keep every stored resource traceable to its source.
-5. Give WhatsApp sessions no terminal, file editing, browser automation, cron, or infrastructure tools.
-6. Run without public HTTP ports.
-7. Keep secrets and WhatsApp session credentials outside Git.
+1. A private Telegram supergroup where every member may direct Hermes.
+2. The upstream Hermes dashboard behind Telegram OIDC and a current group
+   membership check.
+3. An optional linked Telegram broadcast channel for announcements. The channel
+   is not the conversational surface.
 
 ## Components
 
 | Component | Purpose |
 | --- | --- |
-| Hermes Agent | Conversation, group routing, tools, and WhatsApp gateway |
-| Baileys bridge | Unofficial WhatsApp Web connection used by Hermes |
-| OpenViking | Shared semantic memory and source library |
-| Ollama | Local multilingual `bge-m3` embeddings |
-| DeepSeek API | Short answers to messages routed to Hermes |
+| Hermes Agent | Conversation, Telegram routing, dashboard, tools, and sessions |
+| Telegram adapter | Official Bot API integration with group and topic support |
+| Local ingest hook | Durable archive of every accepted message, URL, and file |
+| OpenViking | Shared semantic memory and traceable source library |
+| Ollama BGE-M3 | Local multilingual embeddings with one-model concurrency |
+| DeepSeek or Mistral | Configurable conversational inference provider |
+| Cloudflare Pages worker | Telegram OIDC, membership authorization, dashboard proxy |
+| Cloudflare Tunnel | Outbound-only route to the private Hermes dashboard |
 
-Hermes uses an unofficial WhatsApp Web bridge. A dedicated bot number is required. Account restrictions and temporary protocol breakage remain possible. See [SECURITY.md](SECURITY.md).
+## Important defaults
 
-## Safe default behavior
+1. The Telegram token and group ID are empty, so a fresh installation is fail
+   closed.
+2. Direct messages are disabled.
+3. Only one exact supergroup ID is accepted.
+4. Every accepted message is spooled locally before agent routing.
+5. Every URL and cached attachment is archived and indexed automatically.
+6. The complete raw archive and BGE-M3 embeddings remain on the server.
+7. The response model receives a large dynamically assembled context, including
+   recent discussion, summaries, decisions, and retrieved sources.
+8. Telegram has only skills and memory tools. It has no shell, Docker, browser,
+   cron, filesystem editing, or cross-platform messaging toolset.
+9. No Compose service publishes a host port.
+10. The stack has its own networks, volumes, secrets, logs, and backup path.
 
-The committed configuration blocks all WhatsApp groups until two exact group JIDs are supplied. Direct messages are disabled. Every message from either approved group is archived and indexed locally. An unaddressed main-group message stops in the local ingest hook before the Hermes agent, so it is not sent to DeepSeek. A directly addressed main-group message and every auxiliary-group message enter the conversational agent.
+## Model selection
 
-Every URL is fetched through an SSRF-protected local extractor. Every available attachment is copied into local storage. Text, HTML, PDF, DOCX, PPTX, XLSX, and image OCR content is indexed automatically. Unsupported binary formats retain their local original plus searchable metadata and a SHA-256 digest.
+The pilot defaults to DeepSeek V4 Flash because its one-million-token context
+window is inexpensive. Change `LLM_PROVIDER` and `LLM_MODEL` to use Mistral
+Small 4 through Mistral's EU endpoint. Telegram, memory, and dashboard code do
+not depend on either provider.
 
-The `muistiin` marker is not required. Each inbound event is first written to a durable local spool, then a sequential background worker writes raw messages and extracted resources through OpenViking's content API for local BGE-M3 embedding. Addressed conversations can additionally produce Hermes session memories.
+The normal configuration protects 160 recent turns and allows OpenViking to
+inject up to 700,000 characters of relevant memory. Replies remain compact at
+350 output tokens unless an administrator changes the limit.
 
 ## Local validation
 
 ```bash
 python3 -m unittest discover -s tests -v
 bash -n ops/*.sh images/openviking/*.sh
+node --check pages/_worker.js
+docker compose --env-file .env.example config --quiet
+docker compose --env-file .env.example build hermes
 ```
 
-## Deployment outline
+## Deployment
 
-1. Copy `.env.example` to `.env.runtime` and fill the secrets and group JIDs.
-2. Run `ops/bootstrap.sh`.
-3. Run `ops/deploy.sh`.
-4. Pair the dedicated WhatsApp account with `ops/pair-whatsapp.sh`.
-5. Add the account to both groups and send one message in each group.
-6. Discover the group JIDs with `ops/discover-groups.sh`.
-7. Put the two approved JIDs and `WHATSAPP_ENABLED=true` in `.env.runtime`, then run `ops/deploy.sh` again.
+1. Create a dedicated bot with BotFather.
+2. Create a private Telegram supergroup and add the bot as an administrator.
+3. Put the dedicated token and exact numeric group ID in `.env.runtime`.
+4. Install runtime secrets with mode 600.
+5. Run `ops/deploy.sh`.
+6. Configure the private Cloudflare Tunnel origin to `http://hermes:9119`.
+7. Set the Pages secrets documented in `pages/README.md`.
+8. Deploy Pages with `ops/deploy-pages.sh`.
+9. Add the Pages URL to the bot's BotFather Web Login allowed URLs.
 
-The first deployment can be completed before WhatsApp pairing. The WhatsApp gateway is disabled and group access remains closed until step 7.
+The optional local Telegram Bot API is enabled with
+`TELEGRAM_LOCAL_API_ENABLED=true`. It is built from the pinned official
+Telegram Bot API source and supports Telegram files larger than the public Bot
+API download limit.
 
 ## Operations
 
 ```bash
 ops/healthcheck.sh
 ops/backup.sh
+ops/discover-telegram.sh
 docker compose --env-file .env.runtime logs -f hermes
 ```
 
-Backups cover Hermes state, WhatsApp session credentials, and OpenViking data. Ollama model files are reproducible and are not included.
-
-## Privacy
-
-This is intended for a political policy discussion group. Messages can reveal political opinions, which are sensitive personal data under European data protection law. The operator must obtain an appropriate legal basis, provide clear information, and document deletion and retention procedures before production use. Read [PRIVACY.md](PRIVACY.md) before pairing WhatsApp.
-
-## Upstream projects
-
-1. [Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent), MIT license.
-2. [OpenViking](https://github.com/volcengine/OpenViking), AGPL 3.0 license.
-3. [Ollama](https://github.com/ollama/ollama), MIT license.
-
-This repository contains deployment configuration and project specific instructions. It does not vendor those upstream codebases.
+Read [ARCHITECTURE.md](ARCHITECTURE.md), [PRIVACY.md](PRIVACY.md), and
+[SECURITY.md](SECURITY.md) before inviting members.

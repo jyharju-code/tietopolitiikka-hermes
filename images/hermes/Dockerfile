@@ -1,4 +1,4 @@
-ARG HERMES_BASE_IMAGE
+ARG HERMES_BASE_IMAGE=nousresearch/hermes-agent@sha256:62ba776214e3df3d4c2b8ed21cc857fbaa918f6dc07089a528553bc26af300c0
 FROM ${HERMES_BASE_IMAGE}
 
 USER root
@@ -18,9 +18,9 @@ RUN apt-get update \
        python-pptx
 
 COPY images/hermes/tietopolitiikka_ingest_hook.py /opt/hermes/tietopolitiikka_ingest_hook.py
-COPY images/hermes/patch_whatsapp_adapter.py /tmp/patch_whatsapp_adapter.py
+COPY images/hermes/patch_telegram_adapter.py /tmp/patch_telegram_adapter.py
 
-RUN /opt/hermes/.venv/bin/python /tmp/patch_whatsapp_adapter.py \
-    && rm /tmp/patch_whatsapp_adapter.py \
+RUN /opt/hermes/.venv/bin/python /tmp/patch_telegram_adapter.py \
+    && rm /tmp/patch_telegram_adapter.py \
     && chown root:root /opt/hermes/tietopolitiikka_ingest_hook.py \
     && chmod 0444 /opt/hermes/tietopolitiikka_ingest_hook.py

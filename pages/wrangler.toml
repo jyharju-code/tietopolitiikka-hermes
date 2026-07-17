@@ -1,0 +1,9 @@
+name = "tietopolitiikka"
+compatibility_date = "2026-07-18"
+pages_build_output_dir = "."
+
+[vars]
+TELEGRAM_CLIENT_ID = "replace-with-dedicated-bot-id"
+TELEGRAM_GROUP_ID = "replace-with-private-supergroup-id"
+HERMES_ORIGIN = "https://hermes-origin.tietopolitiikka.fi"
+ORIGIN_BASIC_AUTH_USERNAME = "hermes-proxy"

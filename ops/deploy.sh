@@ -7,6 +7,9 @@ source "$(dirname "$0")/common.sh"
 
 compose pull ollama ollama-init
 compose build --pull openviking hermes
+if [[ "${TELEGRAM_LOCAL_API_ENABLED:-false}" == "true" ]]; then
+  compose build telegram-bot-api
+fi
 compose up -d ollama
 compose run --rm ollama-init
 compose up -d openviking
@@ -19,4 +22,7 @@ for _ in $(seq 1 30); do
 done
 
 compose up -d --force-recreate hermes
+if [[ "${CLOUDFLARE_TUNNEL_ENABLED:-false}" == "true" ]]; then
+  compose up -d cloudflared
+fi
 "${REPO_ROOT}/ops/healthcheck.sh"

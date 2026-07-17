@@ -1,19 +1,18 @@
 ---
 name: tietopolitiikka-memory
-description: Store, retrieve, cite, and remove the Tietopolitiikka WhatsApp groups' shared memories, links, and documents with OpenViking.
+description: Store, retrieve, cite, and remove the Tietopolitiikka Telegram supergroup's shared memories, links, and documents with OpenViking.
 ---
 
 # Tietopolitiikka shared memory
 
-Use this skill whenever a WhatsApp member asks to store, retrieve, cite, inspect, or remove shared knowledge.
+Use this skill whenever a Telegram group member asks to store, retrieve, cite, inspect, or remove shared knowledge.
 
 ## Automatic conversation memory
 
-Every message from both approved WhatsApp groups is archived and indexed by the
-local gateway hook before conversational routing. Unaddressed main-group
-messages stop there and never reach the conversational model. Addressed turns
-can also be synchronized to an OpenViking session. Do not duplicate each turn
-with `viking_remember`.
+Every message from the exact approved Telegram supergroup is archived and
+indexed by the local gateway hook before conversational routing. Every group
+turn also reaches the conversational model unless Hermes intentionally returns
+`NO_REPLY`. Do not duplicate each turn with `viking_remember`.
 
 ## Store a URL or attachment
 

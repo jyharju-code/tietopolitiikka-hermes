@@ -38,4 +38,8 @@ if ! compose ps --status running --services | grep -qx hermes; then
   exit 1
 fi
 
-echo "Stack health checks passed. WhatsApp readiness still depends on pairing and group allowlists."
+if [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -z "${TELEGRAM_GROUP_ID:-}" ]]; then
+  echo "Stack health checks passed. Telegram remains fail closed until its dedicated token and group ID are installed."
+else
+  echo "Stack health checks passed with Telegram credentials configured."
+fi

@@ -1,0 +1,21 @@
+services:
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE}
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN}"]
+    depends_on:
+      hermes:
+        condition: service_healthy
+    networks:
+      - edge
+    mem_limit: 128m
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

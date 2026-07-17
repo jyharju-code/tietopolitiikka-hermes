@@ -23,7 +23,11 @@ for service in hermes openviking; do
   fi
 done
 
-tar -C "${DATA_ROOT}" -czf "${archive}" hermes openviking
+paths=(hermes openviking)
+if [[ -d "${DATA_ROOT}/telegram-bot-api" ]]; then
+  paths+=(telegram-bot-api)
+fi
+tar -C "${DATA_ROOT}" -czf "${archive}" "${paths[@]}"
 chmod 0600 "${archive}"
 
 cleanup

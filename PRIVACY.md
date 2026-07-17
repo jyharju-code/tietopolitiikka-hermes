@@ -1,64 +1,65 @@
-# Privacy and consent
+# Privacy and member notice
 
-This document is an engineering checklist, not legal advice.
+This is an engineering checklist, not legal advice.
 
-## Why this deployment needs special care
+## Processing model
 
-The group discusses information policy and may contain identifiable political opinions. Political opinions are a special category of personal data under the GDPR. The assistant also uses a DeepSeek API service whose processing can occur in the People's Republic of China.
+The private Telegram supergroup can contain identifiable political opinions.
+Every accepted group message, URL, and attachment is copied from Telegram to
+the Tietopolitiikka Hermes server and indexed in the shared local memory.
 
-The operator should complete and document at least these items before production use:
+Unlike Telegram Secret Chats, Telegram groups are cloud chats and are not
+end-to-end encrypted. A member's data can therefore be processed by Telegram,
+the Hetzner-hosted Tietopolitiikka Hermes stack, the selected conversational
+model provider, and the encrypted backup destination.
 
-1. Identify the controller and a contact address.
-2. Define the purpose of processing in plain language.
-3. Select and document an Article 6 legal basis.
-4. Select and document an Article 9 condition for any sensitive personal data.
-5. Assess the international transfer and the DeepSeek service terms.
-6. Decide whether a data protection impact assessment is required.
-7. Obtain explicit, informed agreement from every group member when consent is the chosen basis.
-8. Define retention, access, correction, export, and deletion procedures.
-9. Record who can administer the server and backups.
-10. Revisit the assessment when the model provider, group purpose, or storage behavior changes.
+The selected conversational provider receives a large dynamically assembled
+context. This can include recent group discussion, historical summaries,
+decisions, member-attributed messages, and relevant document excerpts. The
+full raw archive and BGE-M3 embeddings remain on the Hetzner server, but this
+does not mean that only short excerpts are sent to the model.
 
-## Data minimization implemented by this repository
+## Required organizational decisions
 
-1. Direct messages are disabled.
-2. Only two exact group IDs are accepted.
-3. The main group requires a direct trigger for a visible reply.
-4. All messages in both approved groups are archived and indexed locally in OpenViking.
-5. Passive main-group messages stop before the agent and are not sent to DeepSeek.
-6. Addressed main-group messages and all auxiliary-group messages can be sent to DeepSeek for a conversational answer.
-7. Every URL and attachment is archived and indexed automatically without a marker word.
-8. Vector embeddings are produced locally with BGE-M3.
-9. No public dashboard or API is exposed.
-10. WhatsApp sessions receive no terminal or infrastructure tools.
-11. Debug logging is off by default.
-12. Backups have a defined retention period.
+Before inviting members, document at least:
 
-## Suggested group notice
+1. controller and contact address,
+2. processing purposes,
+3. Article 6 legal basis,
+4. Article 9 condition for special-category data,
+5. model provider and processing region,
+6. retention, access, correction, export, and deletion procedures,
+7. administrators and backup access,
+8. whether a data protection impact assessment is required.
 
-The following text should be adapted with the controller contact and approved by the association before use:
+Changing from DeepSeek to Mistral changes the international processing facts
+and requires the member notice to be updated.
 
-> Ryhmään lisätään oma Hermes-avustaja ja yhteinen hakumuisti. Molempien hyväksyttyjen ryhmien kaikki viestit, URLit ja liitteet tallennetaan sekä indeksoidaan Helsingin palvelimella. Pääryhmässä Hermes vastaa vain, kun se mainitaan, sille vastataan tai viesti alkaa sanalla Hermes. Muut pääryhmän viestit käsitellään vain paikallisella BGE-M3-indeksoinnilla, eikä niitä lähetetä DeepSeekille. Tietopolitiikka.hermes-ryhmässä jokainen viesti tulkitaan avustajalle osoitetuksi ja voidaan lähettää DeepSeekin rajapintaan käsiteltäväksi Kiinassa. Myös Hermekselle osoitetut pääryhmän viestit voidaan lähettää DeepSeekille vastausta varten. Voit pyytää omien tietojesi tarkastusta, korjausta tai poistamista yhteyshenkilöltä [YHTEYSTIETO]. Älä lähetä ryhmiin salassa pidettäviä tai sivullisten arkaluonteisia tietoja.
+## Proposed member notice
 
-Consent should be recorded outside the public repository. Never commit member names, phone numbers, WhatsApp group IDs, or consent records here.
+> Ryhmään on liitetty Tietopolitiikka Hermes, yhteinen keskustelukumppani ja
+> hakumuisti. Ryhmän kaikki viestit, URL-osoitteet ja liitteet tallennetaan ja
+> indeksoidaan tietopolitiikka.fi:n hallinnoimalla Hetzner-palvelimella.
+> Hermeksen vastausmallille voidaan lähettää suuri määrä keskusteluhistoriaa,
+> tiivistelmiä ja lähdeaineistoa vastauksen muodostamista varten. Käytössä oleva
+> mallipalvelu ja käsittelyalue ilmoitetaan tässä viestissä ennen käyttöönottoa.
+> Telegram-ryhmä ei ole päästä päähän salattu. Dashboardiin pääsee vain
+> Telegram-ryhmän nykyisellä jäsenyydellä. Omien tietojen tarkastusta, korjausta
+> tai poistoa voi pyytää yhteyshenkilöltä [YHTEYSTIETO]. Älä lähetä ryhmään
+> salasanoja, tunnistautumiskoodeja tai sivullisten salassa pidettäviä tietoja.
 
-## Retention proposal
+## Technical deletion behavior
 
-1. Complete locally indexed conversation records from both groups: 90 days.
-2. Automatically archived URL and attachment resources: until deleted by the group or controller.
-3. Extracted conversational memories: review every 90 days.
-4. Application logs: 14 days.
-5. Backups: 14 daily copies.
+Telegram Bot API does not reliably notify a bot when an ordinary group message
+is deleted. Removing a Telegram message therefore does not automatically remove
+the local archive. A local deletion command and an administrator dashboard flow
+must identify and remove the raw source, extracted chunks, and vectors.
 
-These are initial technical defaults. The controller should approve or replace them.
+## Initial retention proposal
 
-## Member commands
-
-The assistant instructions recognize these Finnish phrases:
-
-1. `Mitä muistat minusta?`
-2. `Mistä tämä tieto on peräisin?`
-3. `Poista muistista tämä tieto: ...`
-4. `Unohda dokumentti: ...`
-
-Resource deletion can require administrator confirmation because a broad or ambiguous request could remove shared material belonging to the whole group.
+1. Complete group archive: retained until the controller changes the policy or
+   an applicable deletion request is completed.
+2. Application logs: 14 days.
+3. Encrypted backups: 14 daily copies.
+4. Failed ingest spool: retained until successfully processed or explicitly
+   reviewed by an administrator.

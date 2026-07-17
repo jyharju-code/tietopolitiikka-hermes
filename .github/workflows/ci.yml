@@ -19,5 +19,11 @@ jobs:
         run: python3 -m unittest discover -s tests -v
       - name: Check shell syntax
         run: bash -n ops/*.sh images/openviking/*.sh
+      - name: Check Pages worker syntax
+        run: node --check pages/_worker.js
       - name: Check example Compose rendering
         run: docker compose --env-file .env.example config --quiet
+      - name: Check optional Compose overlays
+        run: |
+          docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.telegram-local.yml config --quiet
+          docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.tunnel.yml config --quiet

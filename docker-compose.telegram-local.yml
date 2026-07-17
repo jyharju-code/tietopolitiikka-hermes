@@ -1,0 +1,42 @@
+services:
+  telegram-bot-api:
+    build:
+      context: .
+      dockerfile: images/telegram-bot-api/Dockerfile
+    restart: unless-stopped
+    command:
+      - --api-id=${TELEGRAM_API_ID}
+      - --api-hash=${TELEGRAM_API_HASH}
+      - --local
+      - --http-port=8081
+      - --dir=/var/lib/telegram-bot-api
+      - --temp-dir=/var/lib/telegram-bot-api/temp
+    volumes:
+      - ${DATA_ROOT}/telegram-bot-api:/var/lib/telegram-bot-api
+    networks:
+      - memory
+    mem_limit: 384m
+    cpus: 0.75
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-sS", "http://127.0.0.1:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  hermes:
+    depends_on:
+      telegram-bot-api:
+        condition: service_healthy
+    environment:
+      TELEGRAM_API_BASE_URL: http://telegram-bot-api:8081/bot
+    volumes:
+      - ${DATA_ROOT}/telegram-bot-api:/var/lib/telegram-bot-api:ro

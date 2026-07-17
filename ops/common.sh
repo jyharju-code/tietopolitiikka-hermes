@@ -19,8 +19,11 @@ set +a
 
 compose() {
   local compose_files=(-f "${REPO_ROOT}/docker-compose.yml")
-  if [[ "${WHATSAPP_ENABLED:-false}" == "true" ]]; then
-    compose_files+=(-f "${REPO_ROOT}/docker-compose.whatsapp.yml")
+  if [[ "${TELEGRAM_LOCAL_API_ENABLED:-false}" == "true" ]]; then
+    compose_files+=(-f "${REPO_ROOT}/docker-compose.telegram-local.yml")
+  fi
+  if [[ "${CLOUDFLARE_TUNNEL_ENABLED:-false}" == "true" ]]; then
+    compose_files+=(-f "${REPO_ROOT}/docker-compose.tunnel.yml")
   fi
 
   docker compose \

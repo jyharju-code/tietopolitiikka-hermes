@@ -1,61 +1,59 @@
-# Security
+# Security model
 
-## Supported deployment
+## Trust boundaries
 
-The supported deployment is one Linux host with Docker Compose, no public application ports, and SSH administration using keys. Report private vulnerabilities directly to the repository owner instead of opening a public issue containing sensitive details.
+The Telegram bot token, model keys, OpenViking key, dashboard proxy password,
+Cloudflare tunnel token, and Pages secrets are production credentials. They are
+stored outside Git in mode-600 runtime files or Cloudflare secret bindings.
 
-## WhatsApp bridge risk
+The public browser endpoint terminates at Cloudflare Pages. The Hetzner origin
+accepts dashboard traffic only through an outbound Cloudflare Tunnel and has no
+published Docker port.
 
-Hermes uses Baileys to emulate a linked WhatsApp Web device. This is not the official WhatsApp Business API. The account can be restricted, the bridge can break after protocol changes, and re-pairing can be required.
+## Group boundary
 
-Use these controls:
+The same Telegram group ID is checked in three places:
 
-1. Use a dedicated number that is not a personal account.
-2. Keep traffic conversational and low volume.
-3. Do not send unsolicited or bulk messages.
-4. Add only the two approved group IDs.
-5. Replace the temporary `*` sender allowance with the approved member numbers after discovery.
-6. Protect the linked device session directory like a password.
+1. Hermes Telegram adapter allowlist,
+2. local ingestion hook,
+3. Pages dashboard membership authorization.
 
-## Agent permissions
+An empty token or group ID leaves the deployment closed. Do not use a personal
+or another Hermes instance's bot token as a temporary shortcut.
 
-WhatsApp receives only the `skills` and `memory` toolsets. The memory provider adds its own narrow memory tools and can ingest an explicitly marked URL. The following capabilities are intentionally absent:
+## Agent boundary
 
-1. Shell and process execution.
-2. General file reading and writing.
-3. Browser automation.
-4. Cron creation.
-5. Cross-platform message sending.
-6. Docker socket access.
-7. Host filesystem mounts.
-8. General web search.
+Telegram receives only the `skills` and `memory` toolsets. It cannot use shell,
+file editing, browser automation, cron, Docker, infrastructure tools, or send
+messages to another platform. Content from documents and web pages is untrusted
+evidence and cannot alter the system prompt or tool policy.
 
-## Secret handling
+## File and URL handling
 
-Secrets live in `.env.runtime` on the deployment host with mode `600`. The file is ignored by Git. Never print `docker compose config` in CI or support logs because interpolated output can include secrets.
+The URL fetcher blocks loopback, private, link-local, and other non-global IP
+addresses before every request and redirect. Downloads have byte, redirect,
+time, and extracted-character limits. Document extraction runs inside the
+Hermes container without Docker socket or host filesystem mounts.
 
-The following values are secret:
+The optional local Bot API is built from a pinned commit of Telegram's official
+source. Enabling it requires separate Telegram `api_id` and `api_hash` values.
 
-1. `DEEPSEEK_API_KEY`.
-2. `OPENVIKING_API_KEY`.
-3. WhatsApp session credentials under the Hermes data directory.
-4. SSH keys and any offsite backup credentials.
+## Dashboard authentication
 
-Group IDs and phone numbers are personal operational data. They are not API secrets, but they must not be committed to this public repository.
+Telegram OIDC uses authorization code flow, PKCE S256, state, nonce, JWKS
+signature verification, issuer validation, audience validation, and expiration
+validation. The group membership check is repeated every 15 minutes. Cookies
+are signed, HttpOnly, Secure, SameSite Lax, and expire after 12 hours.
 
-OpenViking uses trusted upstream identity mode because Hermes supplies the
-account and user identity headers. The root key authenticates that assertion,
-and the API has no published host port. Do not attach untrusted containers to
-the Compose network.
+The Pages worker is the only client that receives the upstream dashboard Basic
+Auth and Cloudflare Access service credentials.
 
-## Incident response
+## Operational checks
 
-If the bot behaves unexpectedly:
-
-1. Stop the Hermes container.
-2. Unlink the device from WhatsApp on the bot phone.
-3. Preserve logs and timestamps for review.
-4. Rotate the DeepSeek API key if exposure is possible.
-5. Review OpenViking resources and memory writes.
-6. Notify affected members when required.
-7. Restore from a known good backup only after the cause is understood.
+1. Keep the bot as a minimal-permission group administrator.
+2. Rotate a token immediately if it appears in a log, shell history, chat, or
+   Git object.
+3. Run repository tests and image builds before deployment.
+4. Monitor container restarts, memory, swap, spool backlog, and disk use.
+5. Restore an encrypted backup periodically instead of assuming it is valid.
+6. Never modify or restart Verifi while deploying this Compose project.

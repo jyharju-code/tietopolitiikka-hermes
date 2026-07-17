@@ -11,6 +11,7 @@ if [[ -z "${deepseek_key}" ]]; then
 fi
 
 openviking_key="$(openssl rand -hex 32)"
+dashboard_password="$(openssl rand -hex 32)"
 
 umask 077
 temporary="$(mktemp "${TARGET}.XXXXXX")"
@@ -19,7 +20,9 @@ trap 'rm -f "${temporary}"' EXIT
 while IFS= read -r line || [[ -n "${line}" ]]; do
   case "${line}" in
     DEEPSEEK_API_KEY=*) printf 'DEEPSEEK_API_KEY=%s\n' "${deepseek_key}" ;;
+    MEMORY_VLM_API_KEY=*) printf 'MEMORY_VLM_API_KEY=%s\n' "${deepseek_key}" ;;
     OPENVIKING_API_KEY=*) printf 'OPENVIKING_API_KEY=%s\n' "${openviking_key}" ;;
+    HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=*) printf 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=%s\n' "${dashboard_password}" ;;
     *) printf '%s\n' "${line}" ;;
   esac
 done < "${REPO_ROOT}/.env.example" > "${temporary}"
