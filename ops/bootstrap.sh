@@ -26,5 +26,6 @@ install -m 0600 "${REPO_ROOT}/config/hermes/memories/USER.md" "${DATA_ROOT}/herm
 install -m 0600 "${REPO_ROOT}/skills/tietopolitiikka-memory/SKILL.md" "${DATA_ROOT}/hermes/skills/tietopolitiikka-memory/SKILL.md"
 
 python3 "${REPO_ROOT}/ops/render-config.py"
+chown -R 10000:10000 "${DATA_ROOT}/hermes"
 
 echo "Bootstrap complete at ${DATA_ROOT}"

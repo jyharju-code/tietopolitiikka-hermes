@@ -80,6 +80,8 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertNotRegex(compose, r"(?m)^\s+ports:\s*$")
         self.assertNotIn("/var/run/docker.sock", compose)
         self.assertNotIn("network_mode: host", compose)
+        self.assertIn("- SETGID", compose)
+        self.assertIn("- SETUID", compose)
 
     def test_openviking_config_uses_supported_fields(self):
         config = (ROOT / "config" / "openviking" / "ov.conf.template").read_text(encoding="utf-8")
