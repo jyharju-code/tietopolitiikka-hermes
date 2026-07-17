@@ -7,6 +7,14 @@ description: Store, retrieve, cite, and remove the Tietopolitiikka WhatsApp grou
 
 Use this skill whenever a WhatsApp member asks to store, retrieve, cite, inspect, or remove shared knowledge.
 
+## Automatic conversation memory
+
+Every processed message from both approved WhatsApp groups is synchronized to
+an OpenViking session automatically, including main-group turns that produce
+`NO_REPLY`. Session commit extracts searchable conversational memories. Do not
+require an explicit command for ordinary conversation and do not duplicate each
+turn with `viking_remember`.
+
 ## Store a URL or attachment
 
 Store a resource only when the current user message contains the Finnish word `muistiin` as a separate word.
@@ -18,7 +26,7 @@ Store a resource only when the current user message contains the Finnish word `m
 5. Confirm only after the tool reports success.
 6. Keep the confirmation to one or two sentences.
 
-If there is no `muistiin` marker, discuss or summarize the item without durable resource storage. Do not infer consent from forwarding a message.
+If there is no `muistiin` marker, do not create a separate durable URL or document resource. The surrounding message still belongs to automatic conversation memory.
 
 ## Store a short fact
 

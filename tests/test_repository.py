@@ -76,6 +76,11 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("group_policy: allowlist", template)
         self.assertIn("require_mention: true", template)
         self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', template)
+        free_response = template.split("free_response_chats:", 1)[1].split("unauthorized_dm_behavior:", 1)[0]
+        self.assertIn('${WHATSAPP_MAIN_GROUP_JID}', free_response)
+        self.assertIn('${WHATSAPP_HERMES_GROUP_JID}', free_response)
+        compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        self.assertIn("WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_MAIN_GROUP_JID:-},${WHATSAPP_HERMES_GROUP_JID:-}", compose)
         self.assertIn("_config_version: 33", template)
         self.assertIn("WHATSAPP_ENABLED=false", example)
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
@@ -114,7 +119,15 @@ class RepositorySafetyTests(unittest.TestCase):
         skill = (ROOT / "skills" / "tietopolitiikka-memory" / "SKILL.md").read_text(encoding="utf-8").lower()
         self.assertIn("muistiin", soul)
         self.assertIn("only when", skill)
-        self.assertIn("do not infer consent", skill)
+        self.assertIn("automatic conversation memory", skill.lower())
+
+    def test_all_approved_group_conversation_is_archived(self):
+        soul = (ROOT / "config" / "hermes" / "SOUL.md").read_text(encoding="utf-8")
+        architecture = (ROOT / "ARCHITECTURE.md").read_text(encoding="utf-8")
+        template = (ROOT / "config" / "hermes" / "config.yaml.template").read_text(encoding="utf-8")
+        self.assertIn("jokainen viesti tallentuu automaattisesti", soul)
+        self.assertIn("Every main-group message enters", architecture)
+        self.assertIn("session_inactivity_minutes: 30", template)
 
 
 class RenderConfigTests(unittest.TestCase):

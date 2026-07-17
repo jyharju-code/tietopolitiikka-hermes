@@ -2,7 +2,7 @@
 
 Tietopolitiikka Hermes is a self-hosted group assistant for two private WhatsApp groups:
 
-1. The main group, where Hermes answers only when mentioned, addressed by name, or replied to.
+1. The main group, where every message is archived but Hermes answers only when mentioned, addressed by name, or replied to.
 2. The `tietopolitiikka.hermes` group, where every message is treated as a conversation with Hermes.
 
 The stack runs Nous Research Hermes Agent, OpenViking, and a local Ollama embedding model. DeepSeek provides the conversational model and OpenViking text analysis. Embeddings and the complete knowledge store stay on the server.
@@ -10,7 +10,7 @@ The stack runs Nous Research Hermes Agent, OpenViking, and a local Ollama embedd
 ## Design goals
 
 1. Keep replies short enough for a real WhatsApp conversation.
-2. Store only content deliberately addressed to Hermes.
+2. Preserve the complete conversation history of both approved groups.
 3. Require the word `muistiin` before a document or URL becomes a permanent shared resource.
 4. Keep every stored resource traceable to its source.
 5. Give WhatsApp sessions no terminal, file editing, browser automation, cron, or infrastructure tools.
@@ -31,7 +31,7 @@ Hermes uses an unofficial WhatsApp Web bridge. A dedicated bot number is require
 
 ## Safe default behavior
 
-The committed configuration blocks all WhatsApp groups until two exact group JIDs are supplied. Direct messages are disabled. The auxiliary group becomes free response only after its exact JID is configured.
+The committed configuration blocks all WhatsApp groups until two exact group JIDs are supplied. Direct messages are disabled. Both approved groups enter the agent session so their complete conversation history reaches OpenViking. In the main group, the model returns `NO_REPLY` unless Hermes was directly addressed. The auxiliary group permits normal free response.
 
 Permanent storage is explicit:
 
@@ -44,7 +44,7 @@ muistiin
 [attached PDF]
 ```
 
-Other directed conversation can be used for the current discussion and may produce compact conversational memories when a session closes. The bot does not read or index ordinary main group chatter that was not directed to it.
+All conversation in both approved groups is written to an OpenViking session immediately. After 30 minutes of inactivity, the session is committed and OpenViking extracts searchable conversational memories. The `muistiin` marker controls only separate long-lived URL and document resources, not conversation capture.
 
 ## Local validation
 

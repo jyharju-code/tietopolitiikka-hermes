@@ -57,11 +57,12 @@ whatsapp:
   mention_patterns:
     - '^\\s*(?:@)?hermes\\b'
   free_response_chats:
+    - "${WHATSAPP_MAIN_GROUP_JID}"
     - "${WHATSAPP_HERMES_GROUP_JID}"
   unauthorized_dm_behavior: ignore
 
 gateway:
-  session_inactivity_minutes: 120
+  session_inactivity_minutes: 30
 
 tool_loop_guardrails:
   warnings_enabled: true

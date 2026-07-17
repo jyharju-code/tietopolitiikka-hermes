@@ -23,9 +23,9 @@ The operator should complete and document at least these items before production
 
 1. Direct messages are disabled.
 2. Only two exact group IDs are accepted.
-3. The main group requires a direct trigger.
-4. Ordinary main group chatter is not sent to Hermes.
-5. Durable document storage requires `muistiin`.
+3. The main group requires a direct trigger for a visible reply.
+4. All messages in both approved groups are sent through Hermes and stored in OpenViking conversation sessions.
+5. Separate durable URL and document resources require `muistiin`.
 6. Vector embeddings are produced locally.
 7. No public dashboard or API is exposed.
 8. WhatsApp sessions receive no terminal or infrastructure tools.
@@ -36,13 +36,13 @@ The operator should complete and document at least these items before production
 
 The following text should be adapted with the controller contact and approved by the association before use:
 
-> Ryhmään lisätään oma Hermes-avustaja. Pääryhmässä se käsittelee vain viestit, joissa se mainitaan, sille vastataan tai viesti alkaa sanalla Hermes. Erillisessä tietopolitiikka.hermes-ryhmässä kaikki viestit on tarkoitettu avustajalle. Pysyvä lähde tai dokumentti tallennetaan vain pyynnöllä muistiin. Vektorihaku ja tietokanta toimivat Helsingin palvelimella. Hermekselle osoitettu teksti voidaan lähettää DeepSeekin rajapintaan käsiteltäväksi Kiinassa. Voit pyytää omien tietojesi tarkastusta, korjausta tai poistamista yhteyshenkilöltä [YHTEYSTIETO]. Älä lähetä avustajalle salassa pidettäviä tai sivullisten arkaluonteisia tietoja.
+> Ryhmään lisätään oma Hermes-avustaja ja yhteinen hakumuisti. Molempien hyväksyttyjen ryhmien kaikki viestit tallennetaan Helsingin palvelimella toimivaan keskustelu- ja vektorimuistiin. Pääryhmässä Hermes vastaa vain, kun se mainitaan, sille vastataan tai viesti alkaa sanalla Hermes. Tietopolitiikka.hermes-ryhmässä jokainen viesti voidaan tulkita avustajalle osoitetuksi. Erillinen URL tai dokumentti indeksoidaan pysyväksi lähteeksi vain pyynnöllä muistiin. Ryhmäviestejä lähetetään DeepSeekin rajapintaan käsiteltäväksi Kiinassa. Voit pyytää omien tietojesi tarkastusta, korjausta tai poistamista yhteyshenkilöltä [YHTEYSTIETO]. Älä lähetä ryhmiin salassa pidettäviä tai sivullisten arkaluonteisia tietoja.
 
 Consent should be recorded outside the public repository. Never commit member names, phone numbers, WhatsApp group IDs, or consent records here.
 
 ## Retention proposal
 
-1. Hermes conversation sessions: 90 days.
+1. Complete Hermes conversation sessions from both groups: 90 days.
 2. Explicit OpenViking resources: until deleted by the group or controller.
 3. Extracted conversational memories: review every 90 days.
 4. Application logs: 14 days.

@@ -13,7 +13,7 @@ Hermes container
     v
 OpenViking container ---> Ollama embedding container
     |
-    | selected directed text only
+    | all messages from two approved groups
     v
 DeepSeek API
 ```
@@ -24,18 +24,18 @@ No service publishes an internet facing port. WhatsApp and DeepSeek connections 
 
 ### Main group
 
-Hermes processes a message only when one of these conditions is true:
+Every main-group message enters the Hermes session and OpenViking memory path. Hermes sends a visible reply only when one of these conditions is true:
 
 1. The bot account is explicitly mentioned.
 2. The message begins with the configured wake word `Hermes`.
 3. The message replies to a Hermes message.
 4. The message is an allowed slash command.
 
-The main group is not in `free_response_chats`. Unaddressed messages do not enter the agent session or external memory provider.
+For other main-group messages, Hermes emits `NO_REPLY`. The gateway suppresses that output but retains the turn in the transcript and memory path.
 
 ### Auxiliary group
 
-The exact `tietopolitiikka.hermes` group JID is added to `free_response_chats`. Every message in this group reaches Hermes. A five second debounce window combines rapid message fragments into one turn.
+Both exact group JIDs are added to `free_response_chats` so the gateway does not discard unaddressed main-group messages before memory synchronization. Every message in `tietopolitiikka.hermes` reaches Hermes as a normal conversational turn. A five second debounce window combines rapid message fragments into one turn.
 
 ## Memory scopes
 
