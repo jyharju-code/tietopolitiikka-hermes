@@ -101,6 +101,8 @@ class RepositorySafetyTests(unittest.TestCase):
     def test_openviking_key_reaches_both_services(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
         self.assertGreaterEqual(compose.count("OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}"), 2)
+        template = (ROOT / "config" / "hermes" / "config.yaml.template").read_text(encoding="utf-8")
+        self.assertIn("plugins:\n  enabled:\n    - openviking", template)
 
     def test_deploy_recreates_hermes_after_rendering_config(self):
         deploy = (ROOT / "ops" / "deploy.sh").read_text(encoding="utf-8")

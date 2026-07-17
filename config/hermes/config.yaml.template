@@ -42,6 +42,10 @@ memory:
   nudge_interval: 8
   flush_min_turns: 4
 
+plugins:
+  enabled:
+    - openviking
+
 platform_toolsets:
   whatsapp: [skills]
   cli: [skills]
