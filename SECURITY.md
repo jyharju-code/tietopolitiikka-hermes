@@ -37,8 +37,9 @@ Secrets live in `.env.runtime` on the deployment host with mode `600`. The file 
 The following values are secret:
 
 1. `DEEPSEEK_API_KEY`.
-2. WhatsApp session credentials under the Hermes data directory.
-3. SSH keys and any offsite backup credentials.
+2. `OPENVIKING_API_KEY`.
+3. WhatsApp session credentials under the Hermes data directory.
+4. SSH keys and any offsite backup credentials.
 
 Group IDs and phone numbers are personal operational data. They are not API secrets, but they must not be committed to this public repository.
 

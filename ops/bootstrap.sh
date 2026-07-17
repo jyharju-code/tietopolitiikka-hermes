@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
 : "${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY is required}"
+: "${OPENVIKING_API_KEY:?OPENVIKING_API_KEY is required}"
 : "${HERMES_IMAGE:?HERMES_IMAGE is required}"
 : "${OLLAMA_IMAGE:?OLLAMA_IMAGE is required}"
 

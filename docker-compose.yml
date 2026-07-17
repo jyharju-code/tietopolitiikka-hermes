@@ -56,6 +56,7 @@ services:
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+      OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}
     volumes:
       - ${DATA_ROOT}/openviking:/data
       - ./config/openviking/ov.conf.template:/config/ov.conf.template:ro
@@ -90,6 +91,7 @@ services:
       HERMES_HOME: /opt/data
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       OPENVIKING_ENDPOINT: http://openviking:1933
+      OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}
       OPENVIKING_ACCOUNT: tietopolitiikka
       OPENVIKING_USER: whatsapp-group
       OPENVIKING_AGENT: tietopolitiikka-hermes
