@@ -135,6 +135,7 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("/api/v1/content/write", hook)
         self.assertNotIn("/api/v1/resources", hook)
         self.assertNotIn("DEEPSEEK", hook.upper())
+        self.assertIn("asyncio.create_task(_drain_worker()", hook)
 
     def test_all_approved_group_conversation_is_archived(self):
         soul = (ROOT / "config" / "hermes" / "SOUL.md").read_text(encoding="utf-8")

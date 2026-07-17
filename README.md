@@ -35,7 +35,7 @@ The committed configuration blocks all WhatsApp groups until two exact group JID
 
 Every URL is fetched through an SSRF-protected local extractor. Every available attachment is copied into local storage. Text, HTML, PDF, DOCX, PPTX, XLSX, and image OCR content is indexed automatically. Unsupported binary formats retain their local original plus searchable metadata and a SHA-256 digest.
 
-The `muistiin` marker is not required. Raw messages and extracted resources are written directly through OpenViking's content API and embedded with local BGE-M3. Addressed conversations can additionally produce Hermes session memories.
+The `muistiin` marker is not required. Each inbound event is first written to a durable local spool, then a sequential background worker writes raw messages and extracted resources through OpenViking's content API for local BGE-M3 embedding. Addressed conversations can additionally produce Hermes session memories.
 
 ## Local validation
 

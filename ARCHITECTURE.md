@@ -31,7 +31,7 @@ Every main-group message enters the local archive and OpenViking memory path. A 
 3. The message replies to a Hermes message.
 4. The message is an allowed slash command.
 
-For other main-group messages, a fail-closed gateway hook writes the message, URLs, and attachments to the local ingest spool and OpenViking. It then returns without creating an agent event. DeepSeek does not receive these passive messages.
+For other main-group messages, a fail-closed gateway hook writes the message, URLs, and attachments to a durable local ingest spool. It then returns without creating an agent event. A sequential background worker drains the spool to OpenViking, so slow CPU embedding does not block WhatsApp message routing. DeepSeek does not receive these passive messages.
 
 ### Auxiliary group
 

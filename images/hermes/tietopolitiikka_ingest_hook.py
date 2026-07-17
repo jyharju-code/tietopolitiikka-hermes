@@ -32,7 +32,8 @@ MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 2_000_000
 CHUNK_CHARS = 12_000
 URL_PATTERN = re.compile(r"https?://[^\s<>\]\[(){}\"']+", re.IGNORECASE)
-_DRAIN_LOCK: asyncio.Lock | None = None
+_WORKER_TASK: asyncio.Task[None] | None = None
+_WORKER_WAKEUP: asyncio.Event | None = None
 
 
 def _clean_url(value: str) -> str:
@@ -367,20 +368,37 @@ async def _process_spool(path: Path) -> None:
     path.unlink(missing_ok=True)
 
 
+async def _drain_worker() -> None:
+    """Drain the durable spool sequentially without blocking message routing."""
+    assert _WORKER_WAKEUP is not None
+    while True:
+        pending = sorted(SPOOL_ROOT.glob("*.json"))
+        if not pending:
+            _WORKER_WAKEUP.clear()
+            if any(SPOOL_ROOT.glob("*.json")):
+                continue
+            await _WORKER_WAKEUP.wait()
+            continue
+        for candidate in pending:
+            try:
+                await _process_spool(candidate)
+            except Exception as error:
+                print(
+                    f"[tietopolitiikka-ingest] Deferred {candidate.name}: {type(error).__name__}",
+                    flush=True,
+                )
+                await asyncio.sleep(2)
+
+
 async def archive_whatsapp_event(event: Any, data: dict[str, Any], *, passive_ingest: bool) -> None:
-    """Spool and index an event without invoking a conversational model."""
-    global _DRAIN_LOCK
+    """Durably spool an event and schedule model-free local indexing."""
+    global _WORKER_TASK, _WORKER_WAKEUP
     try:
-        path = await asyncio.to_thread(_create_spool, event, data, passive_ingest)
-        if _DRAIN_LOCK is None:
-            _DRAIN_LOCK = asyncio.Lock()
-        async with _DRAIN_LOCK:
-            pending = [path]
-            pending.extend(candidate for candidate in sorted(SPOOL_ROOT.glob("*.json")) if candidate != path)
-            for candidate in pending[:10]:
-                try:
-                    await _process_spool(candidate)
-                except Exception as error:
-                    print(f"[tietopolitiikka-ingest] Deferred {candidate.name}: {type(error).__name__}", flush=True)
+        await asyncio.to_thread(_create_spool, event, data, passive_ingest)
+        if _WORKER_WAKEUP is None:
+            _WORKER_WAKEUP = asyncio.Event()
+        if _WORKER_TASK is None or _WORKER_TASK.done():
+            _WORKER_TASK = asyncio.create_task(_drain_worker(), name="tietopolitiikka-ingest")
+        _WORKER_WAKEUP.set()
     except Exception as error:
         print(f"[tietopolitiikka-ingest] Spool failure: {type(error).__name__}", flush=True)
