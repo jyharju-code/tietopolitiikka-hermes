@@ -95,8 +95,9 @@ class RepositorySafetyTests(unittest.TestCase):
         config = (ROOT / "config" / "openviking" / "ov.conf.template").read_text(encoding="utf-8")
         self.assertNotIn("agent_scope_mode", config)
         self.assertNotIn('"version": "v2"', config)
-        self.assertIn('"auth_mode": "api_key"', config)
+        self.assertIn('"auth_mode": "trusted"', config)
         self.assertIn('"root_api_key": "${OPENVIKING_API_KEY}"', config)
+        self.assertIn('"api_base": "http://ollama:11434/v1"', config)
 
     def test_openviking_key_reaches_both_services(self):
         compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")

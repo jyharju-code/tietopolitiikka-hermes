@@ -2,7 +2,7 @@
   "server": {
     "host": "0.0.0.0",
     "port": 1933,
-    "auth_mode": "api_key",
+    "auth_mode": "trusted",
     "root_api_key": "${OPENVIKING_API_KEY}"
   },
   "storage": {
@@ -26,7 +26,7 @@
     "max_input_tokens": 4096,
     "dense": {
       "provider": "ollama",
-      "api_base": "http://ollama:11434",
+      "api_base": "http://ollama:11434/v1",
       "api_key": "local",
       "model": "nomic-embed-text",
       "dimension": 768,

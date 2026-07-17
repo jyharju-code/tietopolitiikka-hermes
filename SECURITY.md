@@ -43,6 +43,11 @@ The following values are secret:
 
 Group IDs and phone numbers are personal operational data. They are not API secrets, but they must not be committed to this public repository.
 
+OpenViking uses trusted upstream identity mode because Hermes supplies the
+account and user identity headers. The root key authenticates that assertion,
+and the API has no published host port. Do not attach untrusted containers to
+the Compose network.
+
 ## Incident response
 
 If the bot behaves unexpectedly:
