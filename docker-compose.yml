@@ -115,6 +115,10 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - KILL
       - SETGID
       - SETUID
     logging:
