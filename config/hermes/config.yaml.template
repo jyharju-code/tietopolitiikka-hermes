@@ -1,0 +1,73 @@
+model:
+  provider: deepseek
+  default: ${DEEPSEEK_MODEL}
+  max_tokens: 350
+
+agent:
+  max_turns: 18
+  verbose: false
+  reasoning_effort: low
+
+display:
+  compact: true
+  show_reasoning: false
+  streaming: false
+  interim_assistant_messages: false
+  tool_progress: off
+  long_running_notifications: false
+  background_process_notifications: off
+
+compression:
+  enabled: true
+  threshold: 0.55
+  target_ratio: 0.25
+  protect_last_n: 12
+  protect_first_n: 2
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: false
+  provider: openviking
+  openviking:
+    endpoint: http://openviking:1933
+    account: tietopolitiikka
+    user: whatsapp-group
+    agent: tietopolitiikka-hermes
+    recall_limit: 6
+    recall_score_threshold: 0.2
+    recall_max_injected_chars: 3500
+    recall_timeout_seconds: 4.0
+  nudge_interval: 8
+  flush_min_turns: 4
+
+platform_toolsets:
+  whatsapp: [skills]
+  cli: [skills]
+
+whatsapp:
+  dm_policy: disabled
+  group_policy: allowlist
+  group_allow_from:
+    - "${WHATSAPP_MAIN_GROUP_JID}"
+    - "${WHATSAPP_HERMES_GROUP_JID}"
+  require_mention: true
+  mention_patterns:
+    - '^\\s*(?:@)?hermes\\b'
+  free_response_chats:
+    - "${WHATSAPP_HERMES_GROUP_JID}"
+  unauthorized_dm_behavior: ignore
+
+gateway:
+  session_inactivity_minutes: 120
+
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
+  warn_after:
+    exact_failure: 2
+    same_tool_failure: 2
+    idempotent_no_progress: 2
+  hard_stop_after:
+    exact_failure: 3
+    same_tool_failure: 4
+    idempotent_no_progress: 3

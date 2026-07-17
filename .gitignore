@@ -1,0 +1,9 @@
+.DS_Store
+.env
+.env.runtime
+runtime/
+backups/
+*.log
+__pycache__/
+*.pyc
+.pytest_cache/

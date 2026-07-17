@@ -1,0 +1,124 @@
+name: tietopolitiikka-hermes
+
+services:
+  ollama:
+    image: ${OLLAMA_IMAGE}
+    restart: unless-stopped
+    volumes:
+      - ${DATA_ROOT}/ollama:/root/.ollama
+    networks:
+      - memory
+    mem_limit: 1280m
+    cpus: 1.50
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  ollama-init:
+    image: ${OLLAMA_IMAGE}
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull nomic-embed-text"]
+    networks:
+      - memory
+    mem_limit: 512m
+    cpus: 1.00
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  openviking:
+    build:
+      context: .
+      dockerfile: images/openviking/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+    volumes:
+      - ${DATA_ROOT}/openviking:/data
+      - ./config/openviking/ov.conf.template:/config/ov.conf.template:ro
+    networks:
+      - memory
+    mem_limit: 2g
+    cpus: 1.50
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:1933/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  hermes:
+    image: ${HERMES_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      openviking:
+        condition: service_healthy
+    command: ["gateway", "run"]
+    environment:
+      HERMES_HOME: /opt/data
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      OPENVIKING_ENDPOINT: http://openviking:1933
+      OPENVIKING_ACCOUNT: tietopolitiikka
+      OPENVIKING_USER: whatsapp-group
+      OPENVIKING_AGENT: tietopolitiikka-hermes
+      WHATSAPP_ENABLED: "true"
+      WHATSAPP_MODE: bot
+      WHATSAPP_ALLOWED_USERS: ${WHATSAPP_ALLOWED_USERS:-*}
+      WHATSAPP_DM_POLICY: disabled
+      WHATSAPP_GROUP_POLICY: allowlist
+      WHATSAPP_GROUP_ALLOWED_USERS: ${WHATSAPP_MAIN_GROUP_JID:-},${WHATSAPP_HERMES_GROUP_JID:-}
+      WHATSAPP_REQUIRE_MENTION: "true"
+      WHATSAPP_FREE_RESPONSE_CHATS: ${WHATSAPP_HERMES_GROUP_JID:-}
+      WHATSAPP_DEBUG: "false"
+    volumes:
+      - ${DATA_ROOT}/hermes:/opt/data
+    networks:
+      - memory
+    mem_limit: 1536m
+    cpus: 1.50
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  memory:
+    internal: false
+    driver: bridge
