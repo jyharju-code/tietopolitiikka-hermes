@@ -81,6 +81,11 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertNotIn("/var/run/docker.sock", compose)
         self.assertNotIn("network_mode: host", compose)
 
+    def test_openviking_config_uses_supported_fields(self):
+        config = (ROOT / "config" / "openviking" / "ov.conf.template").read_text(encoding="utf-8")
+        self.assertNotIn("agent_scope_mode", config)
+        self.assertNotIn('"version": "v2"', config)
+
     def test_durable_resource_requires_explicit_marker(self):
         soul = (ROOT / "config" / "hermes" / "SOUL.md").read_text(encoding="utf-8").lower()
         skill = (ROOT / "skills" / "tietopolitiikka-memory" / "SKILL.md").read_text(encoding="utf-8").lower()

@@ -33,9 +33,5 @@
     "api_key": "${DEEPSEEK_API_KEY}",
     "model": "${DEEPSEEK_MODEL}",
     "max_concurrent": 2
-  },
-  "memory": {
-    "version": "v2",
-    "agent_scope_mode": "user+agent"
   }
 }
