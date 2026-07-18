@@ -63,18 +63,30 @@ class RepositorySafetyTests(unittest.TestCase):
             self.assertNotIn("\u2013", text, f"long dash in {path}")
             self.assertNotIn("\u2014", text, f"long dash in {path}")
 
-    def test_telegram_is_fail_closed_and_tool_restricted(self):
+    def test_telegram_is_fail_closed_and_has_full_tool_catalog(self):
         template = (ROOT / "config/hermes/config.yaml.template").read_text(encoding="utf-8")
         example = (ROOT / ".env.example").read_text(encoding="utf-8")
-        self.assertIn("telegram: [skills, memory]", template)
+        platform_config = template.split("platform_toolsets:", 1)[1].split("telegram:", 1)[1].split("cli:", 1)[0]
+        for required in (
+            "hermes-telegram",
+            "x_search",
+            "video",
+            "video_gen",
+            "context_engine",
+            "project",
+            "discord",
+            "discord_admin",
+            "yuanbao",
+            "feishu_doc",
+            "feishu_drive",
+            "spotify",
+        ):
+            self.assertIn(f"- {required}", platform_config)
         self.assertIn("dm_policy: disabled", template)
         self.assertIn("group_policy: allowlist", template)
         self.assertIn('${TELEGRAM_GROUP_ID}', template)
         self.assertIn("TELEGRAM_BOT_TOKEN=\n", example)
         self.assertIn("TELEGRAM_GROUP_ID=\n", example)
-        telegram_tools = template.split("platform_toolsets:", 1)[1].split("telegram:", 1)[0]
-        for forbidden in ("terminal", "file", "browser", "cronjob", "messaging"):
-            self.assertNotIn(forbidden, telegram_tools)
 
     def test_large_context_and_provider_switch_are_configured(self):
         template = (ROOT / "config/hermes/config.yaml.template").read_text(encoding="utf-8")

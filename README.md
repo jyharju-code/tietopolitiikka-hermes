@@ -37,8 +37,9 @@ an authenticated web dashboard at `tietopolitiikka.pages.dev`.
 6. The complete raw archive and BGE-M3 embeddings remain on the server.
 7. The response model receives a large dynamically assembled context, including
    recent discussion, summaries, decisions, and retrieved sources.
-8. Telegram has only skills and memory tools. It has no shell, Docker, browser,
-   cron, filesystem editing, or cross-platform messaging toolset.
+8. Telegram receives the complete Hermes tool catalog, including web, browser,
+   terminal, files, code execution, delegation, cron, skills, and memory. Tools
+   that require an unconfigured external account remain unavailable at runtime.
 9. No Compose service publishes a host port.
 10. The stack has its own networks, volumes, secrets, logs, and backup path.
 

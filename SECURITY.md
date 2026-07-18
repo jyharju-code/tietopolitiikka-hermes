@@ -23,10 +23,16 @@ or another Hermes instance's bot token as a temporary shortcut.
 
 ## Agent boundary
 
-Telegram receives only the `skills` and `memory` toolsets. It cannot use shell,
-file editing, browser automation, cron, Docker, infrastructure tools, or send
-messages to another platform. Content from documents and web pages is untrusted
-evidence and cannot alter the system prompt or tool policy.
+Telegram receives the complete Hermes tool catalog. Group members can ask it to
+use the terminal, edit files, automate a browser, execute code, create cronjobs,
+delegate work, and operate separately configured integrations. Provider-specific
+tools are exposed only when their required credentials and runtime dependencies
+are present.
+
+These capabilities remain inside the dedicated Hermes container. The container
+has no Docker socket, host filesystem mount, Verifi network, or Verifi data
+mount. Content from documents and web pages is untrusted evidence and cannot
+alter the system prompt, authorization boundary, or tool policy.
 
 ## File and URL handling
 

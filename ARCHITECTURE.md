@@ -14,6 +14,7 @@ Private Telegram supergroup
 Telegram turn
     -> Hermes session and large context assembly
     -> selected DeepSeek or Mistral provider
+    -> full Hermes tool catalog inside the isolated Hermes container
     -> reply in the original Telegram topic
 
 Browser
@@ -36,6 +37,13 @@ not require an agent response. The message is still archived and indexed.
 
 Telegram forum topics produce separate live sessions. OpenViking remains one
 shared knowledge store for the entire group.
+
+The Telegram adapter loads `hermes-telegram`, which contains the complete core
+catalog for messaging surfaces, plus every upstream opt-in toolset. This covers
+web research, browser automation, terminal and process execution, files, code
+execution, delegation, cronjobs, vision, generation, skills, memory, and any
+separately configured service integrations. Runtime checks hide a provider tool
+when its credentials or executable dependency are absent.
 
 ## Durable ingest
 
