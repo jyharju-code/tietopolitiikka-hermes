@@ -17,6 +17,17 @@ RUN apt-get update \
        python-docx \
        python-pptx
 
+# The agent's terminal tool runs commands through a login shell, and a login
+# shell resets PATH to the system default. That hides /opt/hermes/.venv, so
+# `python3` resolves to /usr/bin/python3 and every document library installed
+# above becomes invisible. It surfaces as ModuleNotFoundError the moment the
+# agent tries to read an attachment it was just asked about. Put the
+# virtualenv back on PATH for login shells so the interpreter is the same one
+# whichever way a command is spawned.
+RUN install -d -m 0755 /etc/profile.d \
+    && printf 'PATH=/opt/hermes/.venv/bin:$PATH\nexport PATH\n' > /etc/profile.d/10-hermes-venv.sh \
+    && chmod 0644 /etc/profile.d/10-hermes-venv.sh
+
 COPY images/hermes/tietopolitiikka_ingest_hook.py /opt/hermes/tietopolitiikka_ingest_hook.py
 COPY images/hermes/patch_telegram_adapter.py /tmp/patch_telegram_adapter.py
 COPY images/hermes/patch_openviking_resource_tool.py /tmp/patch_openviking_resource_tool.py

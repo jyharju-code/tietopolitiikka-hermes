@@ -147,6 +147,15 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("already_queued", resource_patcher)
         self.assertIn("TELEGRAM_GROUP_ID", hook)
         self.assertIn("/api/v1/content/write", hook)
+
+    def test_document_libraries_survive_a_login_shell(self):
+        # The terminal tool spawns a login shell, which resets PATH to the
+        # system default and hides the virtualenv. Reading an attachment then
+        # fails with ModuleNotFoundError even though the library is installed.
+        dockerfile = (ROOT / "images/hermes/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("openpyxl", dockerfile)
+        self.assertIn("/etc/profile.d", dockerfile)
+        self.assertIn("PATH=/opt/hermes/.venv/bin:$PATH", dockerfile)
         self.assertNotIn("DEEPSEEK", hook.upper())
 
 
