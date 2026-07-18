@@ -216,19 +216,23 @@ function isWebSocketUpgrade(request) {
   return (request.headers.get("Upgrade") || "").toLowerCase() === "websocket";
 }
 
-function proxyWebSocket(request, env) {
+async function proxyWebSocket(request, env) {
   const incoming = new URL(request.url);
   const origin = new URL(env.HERMES_ORIGIN);
   origin.pathname = incoming.pathname;
   origin.search = incoming.search;
-  const headers = new Headers(request.headers);
-  headers.set("X-Forwarded-Host", incoming.host);
-  headers.set("X-Forwarded-Proto", incoming.protocol.slice(0, -1));
-  headers.delete("CF-Access-Client-Id");
-  headers.delete("CF-Access-Client-Secret");
-  if (env.CF_ACCESS_CLIENT_ID) headers.set("CF-Access-Client-Id", env.CF_ACCESS_CLIENT_ID);
-  if (env.CF_ACCESS_CLIENT_SECRET) headers.set("CF-Access-Client-Secret", env.CF_ACCESS_CLIENT_SECRET);
-  return fetch(origin.toString(), { method: request.method, headers });
+  // Deriving the upstream request from the original preserves the upgrade
+  // handshake. A freshly built init drops it and the socket never opens.
+  const upstreamRequest = new Request(origin.toString(), request);
+  upstreamRequest.headers.set("X-Forwarded-Host", incoming.host);
+  upstreamRequest.headers.set("X-Forwarded-Proto", incoming.protocol.slice(0, -1));
+  upstreamRequest.headers.delete("CF-Access-Client-Id");
+  upstreamRequest.headers.delete("CF-Access-Client-Secret");
+  if (env.CF_ACCESS_CLIENT_ID) upstreamRequest.headers.set("CF-Access-Client-Id", env.CF_ACCESS_CLIENT_ID);
+  if (env.CF_ACCESS_CLIENT_SECRET) upstreamRequest.headers.set("CF-Access-Client-Secret", env.CF_ACCESS_CLIENT_SECRET);
+  const upstream = await fetch(upstreamRequest);
+  if (upstream.webSocket) return new Response(null, { status: 101, webSocket: upstream.webSocket });
+  return upstream;
 }
 
 async function proxyDashboard(request, env, refreshed) {
