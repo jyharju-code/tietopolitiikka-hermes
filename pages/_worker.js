@@ -268,7 +268,13 @@ export default {
       return new Response(proxyConfigured(env) ? "ok" : "ok, dashboard proxy pending", { status: 200 });
     }
     if (!authConfigured(env)) return html("<h1>Tietopolitiikka Hermes</h1><p>Dashboardin turvallinen käyttöönotto on vielä kesken.</p>", 503);
-    if (url.pathname === "/login") return loginPage(request, env);
+    // An already authorized member must never be bounced back to the Telegram
+    // widget, otherwise a dashboard redirect to /login becomes a login loop.
+    if (url.pathname === "/login") {
+      const existing = await loadSession(request, env);
+      if (existing.session) return redirect("/", existing.refreshed ? { "Set-Cookie": existing.refreshed } : {});
+      return loginPage(request, env);
+    }
     if (url.pathname === "/oauth/callback") return finishLogin(request, env);
     if (url.pathname === "/logout") return redirect("/", { "Set-Cookie": cookie(SESSION_COOKIE, "", 0) });
 
