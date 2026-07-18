@@ -33,7 +33,12 @@ FILE_ROOT = DATA_ROOT / "ingest-files"
 DASHBOARD_ROOT = DATA_ROOT / "dashboard-files"
 UPLOAD_PUBLISH_ROOT = DASHBOARD_ROOT / "uploads"
 MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024
-MAX_EXTRACTED_CHARS = 2_000_000
+# A wide spreadsheet is the demanding case: the 1441 row hallitusohjelma master
+# extracts to 3.3 million characters, and the previous two million cap dropped
+# its last 606 rows silently. Truncation is invisible in an answer, so the cap
+# is set above the largest document the group actually works with. The cost is
+# embedding time, because BGE-M3 runs sequentially on CPU.
+MAX_EXTRACTED_CHARS = 4_000_000
 CHUNK_CHARS = 12_000
 MAX_SITE_DOCUMENTS = 100
 HTTP_URL_PATTERN = re.compile(r"https?://[^\s<>\]\[(){}\"']+", re.IGNORECASE)
