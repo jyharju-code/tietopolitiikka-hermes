@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,16 @@ from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def tracked_files() -> list[Path]:
+    """Only committed content matters for repository safety checks. Local
+    excluded files such as the private handoff notes are allowed to contain
+    production details."""
+    output = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True
+    ).stdout
+    return [ROOT / name for name in output.decode("utf-8").split("\0") if name]
 
 
 def load_module(relative_path: str, name: str):
@@ -40,9 +51,7 @@ class RepositorySafetyTests(unittest.TestCase):
             re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{30,}\b"),
             re.compile(r"\bgh[opsu]_[A-Za-z0-9]{20,}\b"),
         )
-        for path in ROOT.rglob("*"):
-            if not path.is_file() or ".git" in path.parts:
-                continue
+        for path in tracked_files():
             try:
                 text = path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
@@ -53,9 +62,7 @@ class RepositorySafetyTests(unittest.TestCase):
                 self.assertIsNone(pattern.search(text), f"possible secret in {path}")
 
     def test_no_long_dash_characters(self):
-        for path in ROOT.rglob("*"):
-            if not path.is_file() or ".git" in path.parts:
-                continue
+        for path in tracked_files():
             try:
                 text = path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
