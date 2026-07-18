@@ -2,8 +2,7 @@ name = "tietopolitiikka"
 compatibility_date = "2026-07-18"
 pages_build_output_dir = "."
 
+# TELEGRAM_CLIENT_ID, TELEGRAM_GROUP_ID, and HERMES_ORIGIN are set as Pages
+# secrets so production identifiers stay out of the public repository.
 [vars]
-TELEGRAM_CLIENT_ID = "replace-with-dedicated-bot-id"
-TELEGRAM_GROUP_ID = "replace-with-private-supergroup-id"
-HERMES_ORIGIN = "https://hermes-origin.tietopolitiikka.fi"
 ORIGIN_BASIC_AUTH_USERNAME = "hermes-proxy"

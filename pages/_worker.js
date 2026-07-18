@@ -78,6 +78,10 @@ function cookie(name, value, maxAge) {
   return `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
+function escapeHtml(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
 function html(body, status = 200, headers = {}) {
   return new Response(`<!doctype html><html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tietopolitiikka Hermes</title><style>body{margin:0;background:#08111f;color:#eef4ff;font:17px system-ui,sans-serif;display:grid;min-height:100vh;place-items:center}.card{width:min(560px,calc(100% - 40px));padding:42px;border:1px solid #24344e;border-radius:24px;background:#101c2f;box-shadow:0 20px 70px #0008}h1{font-size:34px;margin:0 0 14px}p{color:#b9c6da;line-height:1.55}a.button{display:inline-block;margin-top:18px;padding:14px 20px;border-radius:12px;background:#2aabee;color:white;text-decoration:none;font-weight:700}.small{font-size:14px}</style></head><body><main class="card">${body}</main></body></html>`, {
     status,
@@ -222,15 +226,22 @@ async function proxyDashboard(request, env, refreshed) {
   return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders });
 }
 
-function configurationReady(env) {
-  return ["SESSION_SECRET", "TELEGRAM_CLIENT_ID", "TELEGRAM_CLIENT_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_GROUP_ID", "HERMES_ORIGIN", "ORIGIN_BASIC_AUTH_USERNAME", "ORIGIN_BASIC_AUTH_PASSWORD"].every((key) => env[key]);
+function authConfigured(env) {
+  return ["SESSION_SECRET", "TELEGRAM_CLIENT_ID", "TELEGRAM_CLIENT_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_GROUP_ID"].every((key) => env[key]);
+}
+
+function proxyConfigured(env) {
+  return ["HERMES_ORIGIN", "ORIGIN_BASIC_AUTH_USERNAME", "ORIGIN_BASIC_AUTH_PASSWORD"].every((key) => env[key]);
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/health") return new Response(configurationReady(env) ? "ok" : "configuration incomplete", { status: configurationReady(env) ? 200 : 503 });
-    if (!configurationReady(env)) return html("<h1>Tietopolitiikka Hermes</h1><p>Dashboardin turvallinen käyttöönotto on vielä kesken.</p>", 503);
+    if (url.pathname === "/health") {
+      if (!authConfigured(env)) return new Response("configuration incomplete", { status: 503 });
+      return new Response(proxyConfigured(env) ? "ok" : "ok, dashboard proxy pending", { status: 200 });
+    }
+    if (!authConfigured(env)) return html("<h1>Tietopolitiikka Hermes</h1><p>Dashboardin turvallinen käyttöönotto on vielä kesken.</p>", 503);
     if (url.pathname === "/login") return beginLogin(request, env);
     if (url.pathname === "/oauth/callback") return finishLogin(request, env);
     if (url.pathname === "/logout") return redirect("/", { "Set-Cookie": cookie(SESSION_COOKIE, "", 0) });
@@ -241,6 +252,9 @@ export default {
       return html("<h1>Tietopolitiikka Hermes</h1><p>Ryhmän yhteinen agentti, keskustelumuisti ja aineistot yhdessä paikassa.</p><a class=\"button\" href=\"/login\">Kirjaudu Telegramilla</a><p class=\"small\">Käyttöoikeus tarkistetaan yksityisen Telegram-superryhmän jäsenyydestä.</p>");
     }
     if (url.pathname === "/api/auth/me") return Response.json({ id: auth.session.sub, name: auth.session.name, member: true }, { headers: auth.refreshed ? { "Set-Cookie": auth.refreshed } : {} });
+    if (!proxyConfigured(env)) {
+      return html(`<h1>Tervetuloa, ${escapeHtml(auth.session.name)}</h1><p>Kirjautuminen ja jäsenyystarkistus toimivat. Dashboard-yhteys otetaan käyttöön seuraavassa vaiheessa.</p><a class="button" href="/logout">Kirjaudu ulos</a>`, 200, auth.refreshed ? { "Set-Cookie": auth.refreshed } : {});
+    }
     return proxyDashboard(request, env, auth.refreshed);
   },
 };
