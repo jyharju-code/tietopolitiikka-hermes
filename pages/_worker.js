@@ -209,7 +209,30 @@ async function mintDashboardSession(env) {
   return { cookieHeader: pairs.join("; "), setCookies: secured };
 }
 
+// The dashboard opens a WebSocket for live updates. A Worker only proxies an
+// upgrade when the request is forwarded untouched, so this path must not read
+// the body or rewrite the response.
+function isWebSocketUpgrade(request) {
+  return (request.headers.get("Upgrade") || "").toLowerCase() === "websocket";
+}
+
+function proxyWebSocket(request, env) {
+  const incoming = new URL(request.url);
+  const origin = new URL(env.HERMES_ORIGIN);
+  origin.pathname = incoming.pathname;
+  origin.search = incoming.search;
+  const headers = new Headers(request.headers);
+  headers.set("X-Forwarded-Host", incoming.host);
+  headers.set("X-Forwarded-Proto", incoming.protocol.slice(0, -1));
+  headers.delete("CF-Access-Client-Id");
+  headers.delete("CF-Access-Client-Secret");
+  if (env.CF_ACCESS_CLIENT_ID) headers.set("CF-Access-Client-Id", env.CF_ACCESS_CLIENT_ID);
+  if (env.CF_ACCESS_CLIENT_SECRET) headers.set("CF-Access-Client-Secret", env.CF_ACCESS_CLIENT_SECRET);
+  return fetch(origin.toString(), { method: request.method, headers });
+}
+
 async function proxyDashboard(request, env, refreshed) {
+  if (isWebSocketUpgrade(request)) return proxyWebSocket(request, env);
   const method = request.method;
   const bodyBuffer = ["GET", "HEAD"].includes(method) ? undefined : await request.arrayBuffer();
   let mintedCookies = null;
@@ -253,7 +276,9 @@ export default {
     if (!auth.session) {
       return loginPage(request, env);
     }
-    if (url.pathname === "/api/auth/me") return Response.json({ id: auth.session.sub, name: auth.session.name, member: true }, { headers: auth.refreshed ? { "Set-Cookie": auth.refreshed } : {} });
+    // Namespaced so it cannot shadow the dashboard's own /api/auth/me, which
+    // the dashboard frontend needs in order to consider itself signed in.
+    if (url.pathname === "/_tp/me") return Response.json({ id: auth.session.sub, name: auth.session.name, member: true }, { headers: auth.refreshed ? { "Set-Cookie": auth.refreshed } : {} });
     if (!proxyConfigured(env)) {
       return html(`<h1>Tervetuloa, ${escapeHtml(auth.session.name)}</h1><p>Kirjautuminen ja jäsenyystarkistus toimivat. Dashboard-yhteys otetaan käyttöön seuraavassa vaiheessa.</p><a class="button" href="/logout">Kirjaudu ulos</a>`, 200, auth.refreshed ? { "Set-Cookie": auth.refreshed } : {});
     }
