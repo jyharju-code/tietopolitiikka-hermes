@@ -3,7 +3,10 @@ _config_version: 33
 model:
   provider: ${LLM_PROVIDER}
   default: ${LLM_MODEL}
-  max_tokens: 350
+  # Tool call arguments share this budget with chat text. 350 truncated large
+  # viking_read calls into unrepairable JSON, so keep this at 1200 or higher.
+  # SOUL.md still keeps ordinary Telegram replies at two to four sentences.
+  max_tokens: 1200
 
 agent:
   max_turns: 24
