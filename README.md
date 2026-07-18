@@ -51,8 +51,9 @@ Small 4 through Mistral's EU endpoint. Telegram, memory, and dashboard code do
 not depend on either provider.
 
 The normal configuration protects 160 recent turns and allows OpenViking to
-inject up to 700,000 characters of relevant memory. Replies remain compact at
-350 output tokens unless an administrator changes the limit.
+inject up to 700,000 characters of relevant memory. Replies may run up to 8000
+output tokens, so Hermes answers at whatever length the task needs while still
+keeping short questions short.
 
 ## Local validation
 
