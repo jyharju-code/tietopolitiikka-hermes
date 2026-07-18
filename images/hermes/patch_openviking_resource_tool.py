@@ -11,6 +11,15 @@ from pathlib import Path
 
 TARGET = Path("/opt/hermes/plugins/memory/openviking/__init__.py")
 
+OLD_IMPORTS = """import atexit
+import json
+"""
+
+NEW_IMPORTS = """import atexit
+import hashlib
+import json
+"""
+
 OLD = '''            resp = self._client.post("/api/v1/resources", payload)
             result = resp.get("result", {})
 '''
@@ -22,6 +31,13 @@ NEW = '''            target_uri = payload.get("to", "")
                 host = re.sub(r"[^a-z0-9]+", "-", (parsed_remote.hostname or "remote").lower()).strip("-")
                 resource_id = uuid.uuid5(uuid.NAMESPACE_URL, normalized_remote).hex[:20]
                 target_uri = f"viking://resources/web-{host[:48]}-{resource_id}"
+                payload["to"] = target_uri
+            elif source_path is not None and source_path.is_file() and not target_uri and not payload.get("parent"):
+                digest = hashlib.sha256()
+                with source_path.open("rb") as source_handle:
+                    for source_chunk in iter(lambda: source_handle.read(1024 * 1024), b""):
+                        digest.update(source_chunk)
+                target_uri = f"viking://resources/file-{digest.hexdigest()[:20]}"
                 payload["to"] = target_uri
             if _is_remote_resource_source(url):
                 payload["wait"] = False
@@ -61,4 +77,7 @@ if NEW in source:
     raise SystemExit(0)
 if source.count(OLD) != 1:
     raise SystemExit("OpenViking resource tool patch target was not found exactly once")
+if source.count(OLD_IMPORTS) != 1:
+    raise SystemExit("OpenViking import patch target was not found exactly once")
+source = source.replace(OLD_IMPORTS, NEW_IMPORTS)
 TARGET.write_text(source.replace(OLD, NEW), encoding="utf-8")

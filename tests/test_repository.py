@@ -123,6 +123,7 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("patch_openviking_resource_tool.py", dockerfile)
         self.assertIn("await archive_telegram_event(event)", patcher)
         self.assertIn("uuid.uuid5", resource_patcher)
+        self.assertIn("hashlib.sha256", resource_patcher)
         self.assertIn("already_queued", resource_patcher)
         self.assertIn("TELEGRAM_GROUP_ID", hook)
         self.assertIn("/api/v1/content/write", hook)
@@ -185,6 +186,14 @@ class LocalIngestTests(unittest.TestCase):
             self.module._extract_urls("Lue https://example.org/report.pdf."),
             ["https://example.org/report.pdf"],
         )
+
+    def test_file_digest_is_stable_for_archive_deduplication(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            first = Path(temporary) / "first.zip"
+            second = Path(temporary) / "second.zip"
+            first.write_bytes(b"same archive bytes")
+            second.write_bytes(b"same archive bytes")
+            self.assertEqual(self.module._file_sha256(first), self.module._file_sha256(second))
 
 
 class RenderConfigTests(unittest.TestCase):

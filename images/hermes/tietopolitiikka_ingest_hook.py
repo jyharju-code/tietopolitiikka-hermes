@@ -73,6 +73,14 @@ def _sha(value: str | bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _safe_segment(value: Any, fallback: str) -> str:
     text = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "").strip()).strip("-.")
     return (text[:80] or fallback)
@@ -449,6 +457,61 @@ async def _index_site_pdfs(url: str) -> None:
         await _index_url(document_url)
 
 
+async def _index_archive(path: Path) -> None:
+    """Submit a ZIP once to OpenViking's local archive parser."""
+    import httpx
+
+    endpoint = os.environ.get("OPENVIKING_ENDPOINT", "http://openviking:1933").rstrip("/")
+    file_digest = await asyncio.to_thread(_file_sha256, path)
+    target_uri = f"viking://resources/file-{file_digest[:20]}"
+    headers = _headers()
+    timeout = httpx.Timeout(600.0, connect=20.0)
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        existing = await client.get(
+            f"{endpoint}/api/v1/fs/stat",
+            headers=headers,
+            params={"uri": target_uri},
+        )
+        if existing.status_code < 400:
+            return
+        if existing.status_code not in {400, 404}:
+            existing.raise_for_status()
+
+        upload_headers = dict(headers)
+        upload_headers.pop("Content-Type", None)
+        with path.open("rb") as handle:
+            upload = await client.post(
+                f"{endpoint}/api/v1/resources/temp_upload",
+                headers=upload_headers,
+                files={"file": (path.name, handle, "application/zip")},
+            )
+        upload.raise_for_status()
+        temp_file_id = upload.json().get("result", {}).get("temp_file_id", "")
+        if not temp_file_id:
+            raise RuntimeError("OpenViking archive upload did not return a temporary file ID")
+        try:
+            response = await client.post(
+                f"{endpoint}/api/v1/resources",
+                headers=headers,
+                json={
+                    "temp_file_id": temp_file_id,
+                    "source_name": path.name,
+                    "to": target_uri,
+                    "wait": False,
+                },
+            )
+            response.raise_for_status()
+        except (httpx.TimeoutException, httpx.HTTPStatusError):
+            accepted = await client.get(
+                f"{endpoint}/api/v1/fs/stat",
+                headers=headers,
+                params={"uri": target_uri},
+            )
+            if accepted.status_code >= 400:
+                raise
+
+
 async def _index_media(item: dict[str, str], message_key: str, index: int) -> None:
     path_value = item.get("path") or ""
     source = item.get("source") or ""
@@ -456,6 +519,9 @@ async def _index_media(item: dict[str, str], message_key: str, index: int) -> No
     base_uri = f"viking://user/telegram-core/resources/telegram/files/{message_key}-{index:02d}"
     if path_value and Path(path_value).is_file():
         path = Path(path_value)
+        if path.suffix.lower() == ".zip" or mime_type == "application/zip":
+            await _index_archive(path)
+            return
         extracted = await asyncio.to_thread(_extract_path, path, mime_type)
         text = f"Archived file: {path.name}\nOriginal source: {source}\nMIME: {mime_type}\n\n{extracted}"
     elif source.startswith(("http://", "https://")):
