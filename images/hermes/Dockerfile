@@ -19,8 +19,10 @@ RUN apt-get update \
 
 COPY images/hermes/tietopolitiikka_ingest_hook.py /opt/hermes/tietopolitiikka_ingest_hook.py
 COPY images/hermes/patch_telegram_adapter.py /tmp/patch_telegram_adapter.py
+COPY images/hermes/patch_openviking_resource_tool.py /tmp/patch_openviking_resource_tool.py
 
 RUN /opt/hermes/.venv/bin/python /tmp/patch_telegram_adapter.py \
-    && rm /tmp/patch_telegram_adapter.py \
+    && /opt/hermes/.venv/bin/python /tmp/patch_openviking_resource_tool.py \
+    && rm /tmp/patch_telegram_adapter.py /tmp/patch_openviking_resource_tool.py \
     && chown root:root /opt/hermes/tietopolitiikka_ingest_hook.py \
     && chmod 0444 /opt/hermes/tietopolitiikka_ingest_hook.py

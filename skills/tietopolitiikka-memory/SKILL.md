@@ -19,8 +19,12 @@ turn also reaches the conversational model unless Hermes intentionally returns
 Every URL and attachment in an approved group is archived and indexed
 automatically by the local gateway hook. No marker word is required. Do not call
 `viking_add_resource` for the current message, because that would duplicate the
-resource and could invoke a remote analysis path. If a member asks whether an
-item was stored, search for it and report the result in one or two sentences.
+resource and could invoke a remote analysis path. This also applies to bare
+domains such as `example.org`. When a member asks for every PDF on a named site,
+the local hook discovers and queues the site's public PDFs automatically. Never
+retry the same resource after a timeout, because processing continues in the
+background. If a member asks whether an item was stored, search for it and
+report the result in one or two sentences.
 
 ## Store a short fact
 

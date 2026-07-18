@@ -30,13 +30,41 @@ FILE_ROOT = DATA_ROOT / "ingest-files"
 MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 2_000_000
 CHUNK_CHARS = 12_000
-URL_PATTERN = re.compile(r"https?://[^\s<>\]\[(){}\"']+", re.IGNORECASE)
+MAX_SITE_DOCUMENTS = 100
+HTTP_URL_PATTERN = re.compile(r"https?://[^\s<>\]\[(){}\"']+", re.IGNORECASE)
+BARE_DOMAIN_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9@:/])(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+"
+    r"[A-Za-z]{2,63}(?:/[^\s<>\]\[(){}\"']*)?",
+    re.IGNORECASE,
+)
 _WORKER_TASK: asyncio.Task[None] | None = None
 _WORKER_WAKEUP: asyncio.Event | None = None
 
 
 def _clean_url(value: str) -> str:
     return value.rstrip(".,;:!?'")
+
+
+def _extract_urls(text: str) -> list[str]:
+    """Extract explicit and bare web addresses and normalize bare domains."""
+    matches: list[tuple[int, int, str]] = [
+        (match.start(), match.end(), _clean_url(match.group(0)))
+        for match in HTTP_URL_PATTERN.finditer(text)
+    ]
+    occupied = [(start, end) for start, end, _value in matches]
+    for match in BARE_DOMAIN_PATTERN.finditer(text):
+        if any(match.start() < end and match.end() > start for start, end in occupied):
+            continue
+        matches.append((match.start(), match.end(), f"https://{_clean_url(match.group(0))}"))
+    return sorted({value for _start, _end, value in matches})
+
+
+def _requests_site_document_crawl(text: str) -> bool:
+    compact = re.sub(r"\s+", " ", text.lower())
+    return bool(
+        re.search(r"\b(?:kaikki|all)\b.{0,60}\b(?:pdf|dokument)", compact)
+        or re.search(r"\b(?:pdf|dokument)\w*\b.{0,60}\b(?:kaikki|all)\b", compact)
+    )
 
 
 def _sha(value: str | bytes) -> str:
@@ -117,7 +145,7 @@ def _create_spool(event: Any, data: dict[str, Any]) -> Path:
     body = str(getattr(event, "text", "") or data.get("body") or "")
     created = _timestamp(data)
     key = _sha(f"{chat_id}\0{message_id or body}\0{created.isoformat()}")[:32]
-    urls = sorted({_clean_url(match) for match in URL_PATTERN.findall(body)})
+    urls = _extract_urls(body)
     payload = {
         "version": 1,
         "key": key,
@@ -131,6 +159,7 @@ def _create_spool(event: Any, data: dict[str, Any]) -> Path:
         "timestamp": created.isoformat(),
         "body": body,
         "urls": urls,
+        "crawl_site_documents": _requests_site_document_crawl(body),
         "media": _copy_media(event, key),
     }
     SPOOL_ROOT.mkdir(parents=True, exist_ok=True)
@@ -356,6 +385,70 @@ async def _index_url(url: str) -> None:
     await _write_chunks(base_uri, "Automatically indexed URL", text)
 
 
+def _same_site_document_links(content: bytes, base_url: str) -> set[str]:
+    from bs4 import BeautifulSoup
+
+    hostname = (urlparse(base_url).hostname or "").lower().removeprefix("www.")
+    links: set[str] = set()
+    soup = BeautifulSoup(content, "html.parser")
+    for anchor in soup.find_all("a", href=True):
+        candidate = urljoin(base_url, str(anchor.get("href") or ""))
+        parsed = urlparse(candidate)
+        candidate_host = (parsed.hostname or "").lower().removeprefix("www.")
+        if candidate_host == hostname and parsed.path.lower().endswith(".pdf"):
+            links.add(candidate)
+    return links
+
+
+async def _discover_site_pdfs(url: str) -> list[str]:
+    """Discover same-site PDFs, preferring the public WordPress media API."""
+    content, content_type, final_url = await _download_public_url(url)
+    parsed = urlparse(final_url)
+    if content_type not in {"text/html", "application/xhtml+xml"} or not parsed.hostname:
+        return []
+
+    links = _same_site_document_links(content, final_url)
+    api_url = f"{parsed.scheme}://{parsed.netloc}/wp-json/wp/v2/media?per_page=100&page=1"
+    try:
+        api_content, api_type, _api_final = await _download_public_url(api_url)
+        if api_type == "application/json" or api_type.startswith("text/"):
+            media = json.loads(api_content.decode("utf-8", errors="replace"))
+            if isinstance(media, list):
+                site_host = parsed.hostname.lower().removeprefix("www.")
+                for item in media:
+                    if not isinstance(item, dict) or item.get("mime_type") != "application/pdf":
+                        continue
+                    source = str(item.get("source_url") or "")
+                    source_host = (urlparse(source).hostname or "").lower().removeprefix("www.")
+                    if source.startswith(("http://", "https://")) and source_host == site_host:
+                        links.add(source)
+    except Exception:
+        pass
+    return sorted(links)[:MAX_SITE_DOCUMENTS]
+
+
+async def _index_site_pdfs(url: str) -> None:
+    try:
+        document_urls = await _discover_site_pdfs(url)
+    except Exception as error:
+        failure_uri = f"viking://user/telegram-core/resources/telegram/sites/{_sha(url)[:32]}.md"
+        await _write_content(
+            failure_uri,
+            f"# Site PDF discovery\n\nSource URL: {url}\nStatus: failed\n"
+            f"Reason: {type(error).__name__}: {error}\n",
+        )
+        return
+
+    manifest_uri = f"viking://user/telegram-core/resources/telegram/sites/{_sha(url)[:32]}.md"
+    manifest = "\n".join(f"- {document_url}" for document_url in document_urls) or "[No PDFs found]"
+    await _write_content(
+        manifest_uri,
+        f"# Site PDF discovery\n\nSource URL: {url}\nPDF count: {len(document_urls)}\n\n{manifest}\n",
+    )
+    for document_url in document_urls:
+        await _index_url(document_url)
+
+
 async def _index_media(item: dict[str, str], message_key: str, index: int) -> None:
     path_value = item.get("path") or ""
     source = item.get("source") or ""
@@ -383,6 +476,8 @@ async def _process_spool(path: Path) -> None:
     await _write_content(message_uri, _message_markdown(payload))
     for url in payload.get("urls", []):
         await _index_url(str(url))
+        if payload.get("crawl_site_documents"):
+            await _index_site_pdfs(str(url))
     for index, item in enumerate(payload.get("media", [])):
         await _index_media(item, payload["key"], index)
     path.unlink(missing_ok=True)

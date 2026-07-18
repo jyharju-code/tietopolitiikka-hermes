@@ -117,9 +117,13 @@ class RepositorySafetyTests(unittest.TestCase):
     def test_derived_image_patches_telegram_ingestion(self):
         dockerfile = (ROOT / "images/hermes/Dockerfile").read_text(encoding="utf-8")
         patcher = (ROOT / "images/hermes/patch_telegram_adapter.py").read_text(encoding="utf-8")
+        resource_patcher = (ROOT / "images/hermes/patch_openviking_resource_tool.py").read_text(encoding="utf-8")
         hook = (ROOT / "images/hermes/tietopolitiikka_ingest_hook.py").read_text(encoding="utf-8")
         self.assertIn("patch_telegram_adapter.py", dockerfile)
+        self.assertIn("patch_openviking_resource_tool.py", dockerfile)
         self.assertIn("await archive_telegram_event(event)", patcher)
+        self.assertIn("uuid.uuid5", resource_patcher)
+        self.assertIn("already_queued", resource_patcher)
         self.assertIn("TELEGRAM_GROUP_ID", hook)
         self.assertIn("/api/v1/content/write", hook)
         self.assertNotIn("DEEPSEEK", hook.upper())
@@ -164,6 +168,23 @@ class LocalIngestTests(unittest.TestCase):
             self.assertEqual(payload["thread_id"], "7")
             self.assertEqual(payload["platform"], "telegram")
             self.assertTrue(Path(payload["media"][0]["path"]).is_file())
+
+    def test_bare_domain_and_site_pdf_request_are_detected(self):
+        event = self.event(text="Voitko ladata tietopolitiikka.fi sivulta kaikki PDF dokumentit?")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.module.SPOOL_ROOT = root / "spool"
+            self.module.FILE_ROOT = root / "files"
+            path = self.module._create_spool(event, self.module._telegram_event_data(event))
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["urls"], ["https://tietopolitiikka.fi"])
+            self.assertTrue(payload["crawl_site_documents"])
+
+    def test_explicit_url_is_not_duplicated_as_bare_domain(self):
+        self.assertEqual(
+            self.module._extract_urls("Lue https://example.org/report.pdf."),
+            ["https://example.org/report.pdf"],
+        )
 
 
 class RenderConfigTests(unittest.TestCase):
