@@ -128,8 +128,9 @@ class RepositorySafetyTests(unittest.TestCase):
     def test_dashboard_requires_telegram_membership(self):
         worker = (ROOT / "pages/_worker.js").read_text(encoding="utf-8")
         self.assertIn("getChatMember", worker)
-        self.assertIn("verifyIdToken", worker)
+        self.assertIn("verifyTelegramLogin", worker)
         self.assertIn("MEMBERSHIP_RECHECK_SECONDS", worker)
+        self.assertIn("AUTH_MAX_AGE_SECONDS", worker)
         self.assertIn("ORIGIN_BASIC_AUTH_PASSWORD", worker)
         self.assertNotIn("TELEGRAM_BOT_TOKEN =", worker)
 

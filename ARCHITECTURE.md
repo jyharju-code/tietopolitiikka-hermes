@@ -19,7 +19,7 @@ Telegram turn
 
 Browser
     -> tietopolitiikka.pages.dev
-    -> Telegram OIDC and getChatMember authorization
+    -> Telegram Login Widget and getChatMember authorization
     -> Cloudflare Tunnel
     -> upstream Hermes dashboard
 ```
@@ -82,10 +82,11 @@ The upstream dashboard listens only on the private Docker `edge` network. It
 requires a random Basic Auth credential known only to the Pages worker and the
 Hermes container. No host port is published.
 
-The Pages worker uses Telegram authorization code flow with PKCE and validates
-the RS256 ID token against Telegram JWKS. It then calls `getChatMember` for the
-exact group. Membership is checked again every 15 minutes. Sessions are signed,
-HttpOnly, Secure, SameSite Lax cookies with a 12-hour maximum age.
+The Pages worker uses the Telegram Login Widget. It verifies the widget
+signature with an HMAC-SHA256 keyed by `SHA256(bot_token)` and rejects payloads
+whose `auth_date` is stale. It then calls `getChatMember` for the exact group.
+Membership is checked again every 15 minutes. Sessions are signed, HttpOnly,
+Secure, SameSite Lax cookies with a 12-hour maximum age.
 
 The worker adds the private origin Basic Auth and optional Cloudflare Access
 service token while proxying. Those credentials never reach the browser.

@@ -46,10 +46,10 @@ source. Enabling it requires separate Telegram `api_id` and `api_hash` values.
 
 ## Dashboard authentication
 
-Telegram OIDC uses authorization code flow, PKCE S256, state, nonce, JWKS
-signature verification, issuer validation, audience validation, and expiration
-validation. The group membership check is repeated every 15 minutes. Cookies
-are signed, HttpOnly, Secure, SameSite Lax, and expire after 12 hours.
+The Telegram Login Widget payload is verified with an HMAC-SHA256 keyed by
+`SHA256(bot_token)`, and a login whose `auth_date` is older than the allowed
+window is rejected. The group membership check is repeated every 15 minutes.
+Cookies are signed, HttpOnly, Secure, SameSite Lax, and expire after 12 hours.
 
 The Pages worker is the only client that receives the upstream dashboard Basic
 Auth and Cloudflare Access service credentials.

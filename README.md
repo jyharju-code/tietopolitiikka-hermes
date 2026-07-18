@@ -8,8 +8,8 @@ an authenticated web dashboard at `tietopolitiikka.pages.dev`.
 ## User surfaces
 
 1. A private Telegram supergroup where every member may direct Hermes.
-2. The upstream Hermes dashboard behind Telegram OIDC and a current group
-   membership check.
+2. The upstream Hermes dashboard behind the Telegram Login Widget and a current
+   group membership check.
 3. An optional linked Telegram broadcast channel for announcements. The channel
    is not the conversational surface.
 
@@ -23,7 +23,7 @@ an authenticated web dashboard at `tietopolitiikka.pages.dev`.
 | OpenViking | Shared semantic memory and traceable source library |
 | Ollama BGE-M3 | Local multilingual embeddings with one-model concurrency |
 | DeepSeek or Mistral | Configurable conversational inference provider |
-| Cloudflare Pages worker | Telegram OIDC, membership authorization, dashboard proxy |
+| Cloudflare Pages worker | Telegram Login Widget, membership authorization, dashboard proxy |
 | Cloudflare Tunnel | Outbound-only route to the private Hermes dashboard |
 
 ## Important defaults
@@ -75,7 +75,7 @@ docker compose --env-file .env.example build hermes
 6. Configure the private Cloudflare Tunnel origin to `http://hermes:9119`.
 7. Set the Pages secrets documented in `pages/README.md`.
 8. Deploy Pages with `ops/deploy-pages.sh`.
-9. Add the Pages URL to the bot's BotFather Web Login allowed URLs.
+9. Link the Pages domain to the bot in BotFather with `/setdomain`.
 
 The optional local Telegram Bot API is enabled with
 `TELEGRAM_LOCAL_API_ENABLED=true`. It is built from the pinned official
