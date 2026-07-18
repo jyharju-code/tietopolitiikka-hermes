@@ -117,6 +117,11 @@ services:
       HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}
       HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}
       HERMES_DASHBOARD_FILES_ROOT: /opt/data/dashboard-files
+      # Make the published files root explicitly deliverable to Telegram. Media
+      # delivery is non-strict by default, but strict mode trusts only the cache
+      # directories plus a short recency window. Without this, turning strict
+      # mode on would silently break resending an older artifact or upload.
+      HERMES_MEDIA_ALLOW_DIRS: /opt/data/dashboard-files
     volumes:
       - ${DATA_ROOT}/hermes:/opt/data
     networks:

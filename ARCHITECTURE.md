@@ -57,12 +57,34 @@ record. A sequential worker then:
 1. writes the message and provenance to OpenViking,
 2. downloads public URLs through an SSRF-protected fetcher,
 3. copies Telegram-cached attachments to local storage,
-4. extracts text from HTML, PDF, DOCX, PPTX, XLSX, text, and images,
-5. writes chunked source records through OpenViking `content/write`,
-6. lets only the local BGE-M3 service produce embeddings.
+4. publishes each attachment into the dashboard files root,
+5. extracts text from HTML, PDF, DOCX, PPTX, XLSX, text, and images,
+6. writes chunked source records through OpenViking `content/write`,
+7. lets only the local BGE-M3 service produce embeddings.
 
 Failed jobs remain in the spool and are retried. SHA-256 identifiers prevent
 duplicate message, URL, and file resources.
+
+## File delivery
+
+The group reaches a file two ways, and both show the same set.
+
+`HERMES_DASHBOARD_FILES_ROOT` locks the dashboard to `/opt/data/dashboard-files`.
+Nothing outside that tree is browsable. Ingested attachments land in
+`uploads/`, and everything Hermes generates belongs in `artifacts/`.
+
+Publishing uses a hard link rather than a symlink. The dashboard calls
+`Path.resolve()` before its containment check, so a symlink into `ingest-files`
+would resolve outside the locked root and return HTTP 403. A hard link resolves
+to itself, stays inside the root, and costs no second copy of the bytes.
+Publishing is best effort: the archived copy under `ingest-files` is the record,
+so ingest never fails because a file could not be published.
+
+Telegram delivery uses a `MEDIA:/absolute/path` tag in the reply text. The
+gateway strips the tag and uploads the file as a native attachment. A tag whose
+path does not exist on disk is dropped silently and logged, which is the usual
+reason a promised file never arrives. The dashboard refuses to serve a single
+file above 100 MB.
 
 ## Large context
 

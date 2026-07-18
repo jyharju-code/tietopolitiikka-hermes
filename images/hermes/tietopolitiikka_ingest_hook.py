@@ -27,6 +27,11 @@ from urllib.parse import urljoin, urlparse
 DATA_ROOT = Path(os.environ.get("HERMES_HOME", "/opt/data"))
 SPOOL_ROOT = DATA_ROOT / "ingest-spool"
 FILE_ROOT = DATA_ROOT / "ingest-files"
+# Everything the dashboard may browse lives under one locked root. Ingested
+# attachments are published into it so the group sees uploads and generated
+# artifacts in the same place.
+DASHBOARD_ROOT = DATA_ROOT / "dashboard-files"
+UPLOAD_PUBLISH_ROOT = DASHBOARD_ROOT / "uploads"
 MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024
 MAX_EXTRACTED_CHARS = 2_000_000
 CHUNK_CHARS = 12_000
@@ -128,6 +133,40 @@ def is_allowed_telegram_event(event: Any) -> bool:
     return data["chatId"] == allowed_chat
 
 
+def _dashboard_safe_name(name: str) -> str:
+    """Reduce an attachment name to something safe to browse and download."""
+    cleaned = re.sub(r"[^\w.\- ]", "_", name).strip().strip(".")
+    return cleaned[:120] or "attachment"
+
+
+def _publish_upload(archived: Path, original_name: str, message_key: str, index: int) -> str:
+    """Expose an ingested attachment inside the dashboard files root.
+
+    The dashboard resolves symlinks before its containment check, so a link
+    pointing out to ingest-files would be refused as outside the managed root.
+    A hard link keeps a single copy on disk and still resolves inside the root.
+
+    The archived copy is named after the message key so ingest stays idempotent.
+    That name means nothing to a person browsing the dashboard, so the published
+    entry carries the sender's original file name instead, keyed only enough to
+    stay unique.
+
+    Publishing is a convenience surface. Ingest must never fail because of it,
+    so every error here is swallowed and the archived copy remains the record.
+    """
+    try:
+        UPLOAD_PUBLISH_ROOT.mkdir(parents=True, exist_ok=True)
+        target = UPLOAD_PUBLISH_ROOT / f"{message_key[:8]}-{index:02d}-{_dashboard_safe_name(original_name)}"
+        if not target.exists():
+            try:
+                os.link(archived, target)
+            except OSError:
+                shutil.copy2(archived, target)
+        return str(target)
+    except OSError:
+        return ""
+
+
 def _copy_media(event: Any, message_key: str) -> list[dict[str, str]]:
     FILE_ROOT.mkdir(parents=True, exist_ok=True)
     copied: list[dict[str, str]] = []
@@ -137,13 +176,20 @@ def _copy_media(event: Any, message_key: str) -> list[dict[str, str]]:
         media_type = str(media_types[index] if index < len(media_types) else "")
         path = Path(str(value))
         if not path.is_absolute() or not path.is_file():
-            copied.append({"source": str(value), "path": "", "mime": media_type})
+            copied.append({"source": str(value), "path": "", "mime": media_type, "dashboard_path": ""})
             continue
         suffix = path.suffix.lower()[:16]
         destination = FILE_ROOT / f"{message_key}-{index:02d}{suffix}"
         if not destination.exists():
             shutil.copy2(path, destination)
-        copied.append({"source": str(value), "path": str(destination), "mime": media_type})
+        copied.append(
+            {
+                "source": str(value),
+                "path": str(destination),
+                "mime": media_type,
+                "dashboard_path": _publish_upload(destination, path.name, message_key, index),
+            }
+        )
     return copied
 
 

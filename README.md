@@ -34,14 +34,17 @@ an authenticated web dashboard at `tietopolitiikka.pages.dev`.
 3. Only one exact supergroup ID is accepted.
 4. Every accepted message is spooled locally before agent routing.
 5. Every URL and cached attachment is archived and indexed automatically.
-6. The complete raw archive and BGE-M3 embeddings remain on the server.
-7. The response model receives a large dynamically assembled context, including
+6. Attachments and generated artifacts are published to one dashboard files
+   root, and any of them can be delivered back into the chat as a native
+   Telegram attachment.
+7. The complete raw archive and BGE-M3 embeddings remain on the server.
+8. The response model receives a large dynamically assembled context, including
    recent discussion, summaries, decisions, and retrieved sources.
-8. Telegram receives the complete Hermes tool catalog, including web, browser,
+9. Telegram receives the complete Hermes tool catalog, including web, browser,
    terminal, files, code execution, delegation, cron, skills, and memory. Tools
    that require an unconfigured external account remain unavailable at runtime.
-9. No Compose service publishes a host port.
-10. The stack has its own networks, volumes, secrets, logs, and backup path.
+10. No Compose service publishes a host port.
+11. The stack has its own networks, volumes, secrets, logs, and backup path.
 
 ## Model selection
 

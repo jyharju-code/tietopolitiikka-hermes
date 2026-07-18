@@ -215,6 +215,62 @@ class LocalIngestTests(unittest.TestCase):
             second.write_bytes(b"same archive bytes")
             self.assertEqual(self.module._file_sha256(first), self.module._file_sha256(second))
 
+    def test_attachment_is_published_into_the_dashboard_root(self):
+        event = self.event()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            attachment = root / "Kirjausten pitkä lista (1).xlsx"
+            attachment.write_bytes(b"spreadsheet bytes")
+            event.media_urls = [str(attachment)]
+            event.media_types = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
+            self.module.SPOOL_ROOT = root / "spool"
+            self.module.FILE_ROOT = root / "files"
+            self.module.UPLOAD_PUBLISH_ROOT = root / "dashboard-files" / "uploads"
+
+            payload = json.loads(
+                self.module._create_spool(event, self.module._telegram_event_data(event)).read_text(
+                    encoding="utf-8"
+                )
+            )
+            media = payload["media"][0]
+            published = Path(media["dashboard_path"])
+
+            # The dashboard resolves symlinks before its containment check, so a
+            # published upload must resolve to a real path inside the root.
+            self.assertTrue(published.is_file())
+            self.assertFalse(published.is_symlink())
+            self.assertEqual(published.resolve().parent, self.module.UPLOAD_PUBLISH_ROOT.resolve())
+            self.assertEqual(published.read_bytes(), b"spreadsheet bytes")
+            # The archived copy is keyed for idempotence and means nothing to a
+            # person browsing, so the published entry keeps the sender's name.
+            self.assertIn("Kirjausten", published.name)
+            self.assertTrue(published.name.endswith(".xlsx"))
+            self.assertNotIn(Path(media["path"]).stem, published.name)
+            # Publishing must not spend a second copy of the bytes.
+            self.assertEqual(published.stat().st_ino, Path(media["path"]).stat().st_ino)
+
+    def test_publishing_failure_never_breaks_ingest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "report.pdf"
+            source.write_bytes(b"pdf bytes")
+            # A file where the publish root must be refuses mkdir with ENOTDIR.
+            self.module.UPLOAD_PUBLISH_ROOT = root / "blocked" / "uploads"
+            (root / "blocked").write_text("not a directory", encoding="utf-8")
+
+            self.assertEqual(self.module._publish_upload(source, "report.pdf", "key", 0), "")
+
+    def test_published_upload_name_is_sanitised(self):
+        # No separator survives, so a hostile attachment name cannot escape the
+        # publish root, and a name that sanitises to nothing still gets a file.
+        for hostile in ("../../etc/passwd", "/etc/shadow", "..", "...", ""):
+            safe = self.module._dashboard_safe_name(hostile)
+            self.assertNotIn("/", safe)
+            self.assertTrue(safe)
+            self.assertEqual(Path(safe).name, safe)
+        self.assertEqual(self.module._dashboard_safe_name("../../etc/passwd"), "_.._etc_passwd")
+        self.assertEqual(self.module._dashboard_safe_name(""), "attachment")
+
 
 class RenderConfigTests(unittest.TestCase):
     def setUp(self):
