@@ -155,29 +155,77 @@ async function loadSession(request, env) {
   return { session, refreshed: cookie(SESSION_COOKIE, await seal(session, env.SESSION_SECRET), session.exp - now) };
 }
 
-async function proxyDashboard(request, env, refreshed) {
+async function originFetch(request, env, method, bodyBuffer, cookieHeader) {
   const incoming = new URL(request.url);
   const origin = new URL(env.HERMES_ORIGIN);
   origin.pathname = incoming.pathname;
   origin.search = incoming.search;
   const headers = new Headers(request.headers);
-  headers.set("Authorization", `Basic ${btoa(`${env.ORIGIN_BASIC_AUTH_USERNAME}:${env.ORIGIN_BASIC_AUTH_PASSWORD}`)}`);
+  headers.delete("Cookie");
+  if (cookieHeader) headers.set("Cookie", cookieHeader);
   headers.set("X-Forwarded-Host", incoming.host);
   headers.set("X-Forwarded-Proto", incoming.protocol.slice(0, -1));
   headers.delete("CF-Access-Client-Id");
   headers.delete("CF-Access-Client-Secret");
   if (env.CF_ACCESS_CLIENT_ID) headers.set("CF-Access-Client-Id", env.CF_ACCESS_CLIENT_ID);
   if (env.CF_ACCESS_CLIENT_SECRET) headers.set("CF-Access-Client-Secret", env.CF_ACCESS_CLIENT_SECRET);
-  const upstream = await fetch(new Request(origin.toString(), {
-    method: request.method,
+  return fetch(new Request(origin.toString(), {
+    method,
     headers,
-    body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+    body: ["GET", "HEAD"].includes(method) ? undefined : bodyBuffer,
     redirect: "manual",
   }));
+}
+
+function unauthenticatedOrigin(response) {
+  if (response.status === 401) return true;
+  if (response.status === 302) {
+    const location = response.headers.get("Location") || "";
+    return location.includes("/login") || location.includes("/auth/");
+  }
+  return false;
+}
+
+// The upstream dashboard has its own session login at /auth/password-login. The
+// worker signs in once with the shared credential and hands the resulting
+// session cookies to the already Telegram-authorized member, so the dashboard
+// login never appears to the browser. Returns { cookieHeader, setCookies }.
+async function mintDashboardSession(env) {
+  const login = new URL("/auth/password-login", env.HERMES_ORIGIN);
+  const headers = { "Content-Type": "application/json" };
+  if (env.CF_ACCESS_CLIENT_ID) headers["CF-Access-Client-Id"] = env.CF_ACCESS_CLIENT_ID;
+  if (env.CF_ACCESS_CLIENT_SECRET) headers["CF-Access-Client-Secret"] = env.CF_ACCESS_CLIENT_SECRET;
+  const response = await fetch(login.toString(), {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ provider: "basic", username: env.ORIGIN_BASIC_AUTH_USERNAME, password: env.ORIGIN_BASIC_AUTH_PASSWORD, next: "/app" }),
+    redirect: "manual",
+  });
+  if (response.status !== 200) return null;
+  const setCookies = response.headers.getSetCookie ? response.headers.getSetCookie() : [];
+  if (!setCookies.length) return null;
+  const pairs = setCookies.map((line) => line.split(";", 1)[0]).filter(Boolean);
+  const secured = setCookies.map((line) => (/;\s*secure/i.test(line) ? line : `${line}; Secure`));
+  return { cookieHeader: pairs.join("; "), setCookies: secured };
+}
+
+async function proxyDashboard(request, env, refreshed) {
+  const method = request.method;
+  const bodyBuffer = ["GET", "HEAD"].includes(method) ? undefined : await request.arrayBuffer();
+  let mintedCookies = null;
+  let upstream = await originFetch(request, env, method, bodyBuffer, request.headers.get("Cookie"));
+  if (unauthenticatedOrigin(upstream)) {
+    const minted = await mintDashboardSession(env);
+    if (minted) {
+      mintedCookies = minted.setCookies;
+      upstream = await originFetch(request, env, method, bodyBuffer, minted.cookieHeader);
+    }
+  }
   const responseHeaders = new Headers(upstream.headers);
   responseHeaders.delete("WWW-Authenticate");
   responseHeaders.set("Cache-Control", "no-store");
   if (refreshed) responseHeaders.append("Set-Cookie", refreshed);
+  if (mintedCookies) for (const line of mintedCookies) responseHeaders.append("Set-Cookie", line);
   return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders });
 }
 

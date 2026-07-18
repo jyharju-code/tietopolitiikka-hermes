@@ -78,9 +78,10 @@ control assembly order.
 
 ## Dashboard security
 
-The upstream dashboard listens only on the private Docker `edge` network. It
-requires a random Basic Auth credential known only to the Pages worker and the
-Hermes container. No host port is published.
+The upstream dashboard listens only on the private Docker `edge` network and
+publishes no host port. It has its own session login at `/auth/password-login`,
+whose shared credential is known only to the Pages worker and the Hermes
+container.
 
 The Pages worker uses the Telegram Login Widget. It verifies the widget
 signature with an HMAC-SHA256 keyed by `SHA256(bot_token)` and rejects payloads
@@ -88,8 +89,10 @@ whose `auth_date` is stale. It then calls `getChatMember` for the exact group.
 Membership is checked again every 15 minutes. Sessions are signed, HttpOnly,
 Secure, SameSite Lax cookies with a 12-hour maximum age.
 
-The worker adds the private origin Basic Auth and optional Cloudflare Access
-service token while proxying. Those credentials never reach the browser.
+The worker signs in to the dashboard once with the shared credential and hands
+the resulting session cookies to the already Telegram-authorized member, so the
+dashboard login never appears to the browser. The shared credential and the
+optional Cloudflare Access service token never reach the browser.
 
 ## Eight gigabyte pilot profile
 
