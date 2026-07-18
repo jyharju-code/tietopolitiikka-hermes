@@ -147,6 +147,7 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("already_queued", resource_patcher)
         self.assertIn("TELEGRAM_GROUP_ID", hook)
         self.assertIn("/api/v1/content/write", hook)
+        self.assertNotIn("DEEPSEEK", hook.upper())
 
     def test_document_libraries_survive_a_login_shell(self):
         # The terminal tool spawns a login shell, which resets PATH to the
@@ -156,7 +157,6 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("openpyxl", dockerfile)
         self.assertIn("/etc/profile.d", dockerfile)
         self.assertIn("PATH=/opt/hermes/.venv/bin:$PATH", dockerfile)
-        self.assertNotIn("DEEPSEEK", hook.upper())
 
 
 class LocalIngestTests(unittest.TestCase):
