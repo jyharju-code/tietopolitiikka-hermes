@@ -8,6 +8,7 @@ services:
         condition: service_healthy
     networks:
       - edge
+      - egress
     mem_limit: 128m
     cpus: 0.25
     security_opt:

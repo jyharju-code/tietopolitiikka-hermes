@@ -150,3 +150,9 @@ networks:
   edge:
     internal: true
     driver: bridge
+  # Outbound-only network for the Cloudflare Tunnel connector. The dashboard
+  # stays on the internal edge network with no host port; cloudflared joins
+  # both so it can reach the dashboard and still egress to Cloudflare.
+  egress:
+    internal: false
+    driver: bridge
