@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Publish the tietopolitiikka draft site from inside the Hermes container.
+#
+# The agent runs this. It takes no arguments on purpose: the project name and
+# the source directory are fixed here, so the agent's publish path can only
+# ever reach the draft project, never the group's dashboard and never another
+# project on the account.
+#
+# This is a guard rail, not a boundary. The Cloudflare token lives in the
+# container environment, so anything running as the agent could read it and
+# call the API directly. The point is that the normal path is safe by
+# construction and a mistake cannot take production down.
+set -euo pipefail
+
+PROJECT="tietopolitiikkasite"
+SOURCE="/opt/data/tietopolitiikkasite/public"
+WRANGLER_BIN="${WRANGLER_BIN:-wrangler}"
+
+die() { echo "publish-site: $*" >&2; exit 1; }
+
+[[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] \
+  || die "CLOUDFLARE_API_TOKEN is not set. An operator installs it; you cannot."
+
+[[ -d "${SOURCE}" ]] || die "No build at ${SOURCE}. Run hugo first."
+[[ -f "${SOURCE}/index.html" ]] \
+  || die "No index.html in ${SOURCE}. The build is incomplete; run hugo again."
+
+# The draft is a near copy of the live tietopolitiikka.fi. Publishing it
+# crawlable would put two addresses with the same text into search results and
+# let the draft displace the real site. Enforce the block here rather than
+# trusting every future build to remember it.
+robots="${SOURCE}/robots.txt"
+[[ -f "${robots}" ]] \
+  || die "No robots.txt in the build. Expected layouts/robots.txt with 'Disallow: /'."
+grep -qiE '^[[:space:]]*Disallow:[[:space:]]*/[[:space:]]*$' "${robots}" \
+  || die "robots.txt does not disallow crawling. Refusing to publish an indexable copy of the live site."
+
+pages="$(find "${SOURCE}" -name '*.html' | wc -l | tr -d ' ')"
+noindex="$(grep -rl 'noindex' "${SOURCE}" --include='*.html' 2>/dev/null | wc -l | tr -d ' ')"
+[[ "${noindex}" -gt 0 ]] \
+  || die "No page carries a noindex tag. Check layouts/partials/extend_head.html, then rebuild."
+
+files="$(find "${SOURCE}" -type f | wc -l | tr -d ' ')"
+echo "Publishing ${files} files, ${pages} pages, ${noindex} carrying noindex, to ${PROJECT}"
+
+CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN}" \
+CI=true WRANGLER_SEND_METRICS=false \
+  "${WRANGLER_BIN}" pages deploy "${SOURCE}" \
+    --project-name="${PROJECT}" \
+    --branch=main \
+    --commit-dirty=true
+
+echo "Published: https://${PROJECT}.pages.dev"

@@ -44,6 +44,22 @@ RUN install -d -m 0755 /etc/profile.d \
     && printf 'PATH=/opt/hermes/.venv/bin:$PATH\nexport PATH\n' > /etc/profile.d/10-hermes-venv.sh \
     && chmod 0644 /etc/profile.d/10-hermes-venv.sh
 
+# Wrangler publishes the draft site. Pinned and installed into the image for
+# the same reason as Hugo: an npx download at publish time resolves whatever
+# version happens to be current, and would land in a directory the agent can
+# write.
+ARG WRANGLER_VERSION=4.112.0
+RUN npm install -g --no-fund --no-audit "wrangler@${WRANGLER_VERSION}" \
+    && npm cache clean --force \
+    && wrangler --version
+
+# The agent's publish path. Root owned so the agent can run it but not change
+# which project it targets.
+COPY images/hermes/publish-site /usr/local/bin/publish-site
+RUN chown root:root /usr/local/bin/publish-site \
+    && chmod 0755 /usr/local/bin/publish-site \
+    && bash -n /usr/local/bin/publish-site
+
 COPY images/hermes/tietopolitiikka_ingest_hook.py /opt/hermes/tietopolitiikka_ingest_hook.py
 COPY images/hermes/patch_telegram_adapter.py /tmp/patch_telegram_adapter.py
 COPY images/hermes/patch_openviking_resource_tool.py /tmp/patch_openviking_resource_tool.py

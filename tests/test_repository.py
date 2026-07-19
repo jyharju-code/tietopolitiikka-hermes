@@ -168,6 +168,23 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("-C /usr/local/bin hugo", dockerfile)
         self.assertNotIn("/opt/data/bin", dockerfile)
 
+    def test_agent_publish_path_is_pinned_to_the_draft_project(self):
+        # The agent holds a Pages token, and Cloudflare cannot scope one to a
+        # single project. The wrapper fixes the target instead, so the normal
+        # publish path cannot reach the dashboard project.
+        script = (ROOT / "images/hermes/publish-site").read_text(encoding="utf-8")
+        dockerfile = (ROOT / "images/hermes/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn('PROJECT="tietopolitiikkasite"', script)
+        self.assertNotIn('PROJECT="tietopolitiikka"', script)
+        # The target must not be reachable from arguments or the environment.
+        self.assertNotIn("${1", script)
+        self.assertNotIn("PROJECT:-", script)
+        # A crawlable copy of the live site must never ship.
+        self.assertIn("Disallow:", script)
+        self.assertIn("noindex", script)
+        self.assertRegex(dockerfile, r"ARG WRANGLER_VERSION=\d+\.\d+\.\d+")
+        self.assertIn("chown root:root /usr/local/bin/publish-site", dockerfile)
+
 
 class LocalIngestTests(unittest.TestCase):
     def setUp(self):

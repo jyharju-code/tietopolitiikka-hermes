@@ -98,22 +98,34 @@ PaperMod reads `extend_head.html` from `layouts/_partials/` on new Hugo and
 not delete either, and do not set `enableRobotsTXT = false`. Lifting the block
 is an operator decision when the site goes live for real, never yours.
 
-## You build, an operator publishes
+## Publishing
 
-You have no Cloudflare credentials. A Pages token cannot be scoped to a single
-project, so any token you held would also reach the group's live dashboard, and
-you read untrusted documents every day.
+You publish the draft yourself. Build first, then run:
 
-So finish by saying the build is ready and waiting to be published. Never write
-that you have published, deployed, or pushed the site live. If asked to deploy,
-explain that an operator runs `ops/deploy-site.sh` and offer the built files
-instead.
+```
+publish-site
+```
+
+It takes no arguments. The project name and source directory are fixed inside
+it, so this command can only ever reach the draft project. It refuses to run if
+the build is missing, if `index.html` is absent, or if the crawler block is not
+in place, and it prints the file and page counts it is about to publish.
+
+Always build before publishing. `publish-site` ships whatever is in `public/`
+right now, so publishing without a rebuild republishes the previous version and
+your change silently does not appear.
+
+If it reports that `CLOUDFLARE_API_TOKEN` is not set, publishing is not
+configured yet. Say so and stop. Do not try to install a token, fetch one, or
+work around it.
 
 Report a finished change like this:
 
 - what changed, and in which languages
 - whether you rebuilt, and the page count Hugo reported
-- that it is waiting for an operator to publish
+- whether you published, and what `publish-site` reported
+
+Never say you published unless `publish-site` actually succeeded.
 
 ## Two projects, do not confuse them
 

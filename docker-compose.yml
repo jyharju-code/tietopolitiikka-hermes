@@ -122,6 +122,11 @@ services:
       # directories plus a short recency window. Without this, turning strict
       # mode on would silently break resending an older artifact or upload.
       HERMES_MEDIA_ALLOW_DIRS: /opt/data/dashboard-files
+      # Lets the agent publish the draft site with publish-site. Scope the token
+      # to Cloudflare Pages: Edit on this account only. Cloudflare cannot scope
+      # a Pages token to one project, so publish-site fixes the project name
+      # instead, and the token stays out of the image and out of Git.
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
     volumes:
       - ${DATA_ROOT}/hermes:/opt/data
     networks:
