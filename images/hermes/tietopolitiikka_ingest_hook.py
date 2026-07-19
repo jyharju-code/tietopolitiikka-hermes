@@ -32,6 +32,9 @@ FILE_ROOT = DATA_ROOT / "ingest-files"
 # artifacts in the same place.
 DASHBOARD_ROOT = DATA_ROOT / "dashboard-files"
 UPLOAD_PUBLISH_ROOT = DASHBOARD_ROOT / "uploads"
+# Documents fetched from a link the group shared. Kept apart from uploads so a
+# person browsing can tell what someone sent from what someone linked to.
+LINK_PUBLISH_ROOT = DASHBOARD_ROOT / "links"
 MAX_DOWNLOAD_BYTES = 12 * 1024 * 1024
 # A wide spreadsheet is the demanding case: the 1441 row hallitusohjelma master
 # extracts to 3.3 million characters, and the previous two million cap dropped
@@ -144,24 +147,23 @@ def _dashboard_safe_name(name: str) -> str:
     return cleaned[:120] or "attachment"
 
 
-def _publish_upload(archived: Path, original_name: str, message_key: str, index: int) -> str:
-    """Expose an ingested attachment inside the dashboard files root.
+def _publish_document(archived: Path, display_name: str, root: Path, key: str) -> str:
+    """Expose an archived document inside the dashboard files root.
 
     The dashboard resolves symlinks before its containment check, so a link
     pointing out to ingest-files would be refused as outside the managed root.
     A hard link keeps a single copy on disk and still resolves inside the root.
 
-    The archived copy is named after the message key so ingest stays idempotent.
-    That name means nothing to a person browsing the dashboard, so the published
-    entry carries the sender's original file name instead, keyed only enough to
-    stay unique.
+    Archived copies are named after a digest so ingest stays idempotent. That
+    name means nothing to a person browsing, so the published entry carries a
+    readable name and only enough of the digest to stay unique.
 
     Publishing is a convenience surface. Ingest must never fail because of it,
     so every error here is swallowed and the archived copy remains the record.
     """
     try:
-        UPLOAD_PUBLISH_ROOT.mkdir(parents=True, exist_ok=True)
-        target = UPLOAD_PUBLISH_ROOT / f"{message_key[:8]}-{index:02d}-{_dashboard_safe_name(original_name)}"
+        root.mkdir(parents=True, exist_ok=True)
+        target = root / f"{key[:8]}-{_dashboard_safe_name(display_name)}"
         if not target.exists():
             try:
                 os.link(archived, target)
@@ -170,6 +172,30 @@ def _publish_upload(archived: Path, original_name: str, message_key: str, index:
         return str(target)
     except OSError:
         return ""
+
+
+def _publish_upload(archived: Path, original_name: str, message_key: str, index: int) -> str:
+    """Publish a Telegram attachment under the sender's own file name."""
+    return _publish_document(
+        archived, f"{index:02d}-{original_name}", UPLOAD_PUBLISH_ROOT, message_key
+    )
+
+
+def _link_display_name(final_url: str, suffix: str) -> str:
+    """Name a fetched document after the link it came from.
+
+    A URL archive is keyed by digest, so without this the dashboard would show
+    a wall of url-<hash>.pdf entries that nobody can tell apart.
+    """
+    parsed = urlparse(final_url)
+    name = Path(parsed.path).name
+    if not name or not Path(name).suffix:
+        host = (parsed.hostname or "link").removeprefix("www.")
+        stem = Path(name).stem if name else ""
+        name = f"{host}-{stem}" if stem else host
+        if suffix:
+            name = f"{name}{suffix}"
+    return name
 
 
 def _copy_media(event: Any, message_key: str) -> list[dict[str, str]]:
@@ -429,6 +455,12 @@ async def _index_url(url: str) -> None:
         if not archive_path.exists():
             archive_path.write_bytes(content)
             os.chmod(archive_path, 0o600)
+        # A document the group linked to is as much a document as one someone
+        # attached. Publish both, or half of what gets archived stays invisible
+        # to anyone looking in the dashboard.
+        _publish_document(
+            archive_path, _link_display_name(final_url, suffix), LINK_PUBLISH_ROOT, url_key
+        )
         if content_type in {"text/html", "application/xhtml+xml"}:
             extracted = await asyncio.to_thread(_html_text, content)
         elif content_type.startswith("text/") or content_type in {"application/json", "application/xml"}:

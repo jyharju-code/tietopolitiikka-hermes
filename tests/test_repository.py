@@ -285,6 +285,21 @@ class LocalIngestTests(unittest.TestCase):
             # Publishing must not spend a second copy of the bytes.
             self.assertEqual(published.stat().st_ino, Path(media["path"]).stat().st_ino)
 
+    def test_linked_documents_are_published_too(self):
+        # Half of what the group archives arrives as a link, not an attachment.
+        # Publishing only attachments left every fetched PDF invisible in the
+        # dashboard while still being searchable in memory.
+        source = self.module.__dict__["_index_url"].__code__.co_names
+        self.assertIn("_publish_document", source)
+        self.assertIn("LINK_PUBLISH_ROOT", source)
+
+    def test_linked_document_is_named_after_its_url(self):
+        name = self.module._link_display_name
+        self.assertEqual(name("https://tietopolitiikka.fi/x/raportti.pdf", ".pdf"), "raportti.pdf")
+        # A bare directory URL still has to produce something identifiable.
+        self.assertEqual(name("https://www.example.org/", ".html"), "example.org.html")
+        self.assertEqual(name("https://example.org/artikkeli", ".html"), "example.org-artikkeli.html")
+
     def test_publishing_failure_never_breaks_ingest(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

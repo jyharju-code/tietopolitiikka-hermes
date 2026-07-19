@@ -30,6 +30,7 @@ install -d -m 0700 \
   "${DATA_ROOT}/hermes/skills/tietopolitiikka-site" \
   "${DATA_ROOT}/hermes/dashboard-files" \
   "${DATA_ROOT}/hermes/dashboard-files/uploads" \
+  "${DATA_ROOT}/hermes/dashboard-files/links" \
   "${DATA_ROOT}/hermes/dashboard-files/artifacts" \
   "${DATA_ROOT}/hermes/dashboard-files/artifacts/tietopolitiikkasite" \
   "${DATA_ROOT}/openviking" \
