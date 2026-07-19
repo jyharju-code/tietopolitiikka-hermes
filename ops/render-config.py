@@ -13,6 +13,7 @@ TEMPLATE = ROOT / "config" / "hermes" / "config.yaml.template"
 ALLOWED = (
     "LLM_PROVIDER",
     "LLM_MODEL",
+    "LLM_BASE_URL",
     "TELEGRAM_GROUP_ID",
     "TELEGRAM_API_BASE_URL",
     "TELEGRAM_LOCAL_MODE",
@@ -21,6 +22,7 @@ ALLOWED = (
 DEFAULTS = {
     "LLM_PROVIDER": "deepseek",
     "LLM_MODEL": "deepseek-v4-flash",
+    "LLM_BASE_URL": "https://api.deepseek.com/v1",
     "TELEGRAM_GROUP_ID": "",
     "TELEGRAM_API_BASE_URL": "",
     "TELEGRAM_LOCAL_MODE": "false",

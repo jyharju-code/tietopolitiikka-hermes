@@ -3,6 +3,11 @@ _config_version: 33
 model:
   provider: ${LLM_PROVIDER}
   default: ${LLM_MODEL}
+  # Set provider to "custom" to use any OpenAI compatible endpoint. Hermes
+  # derives the credential env var from this host, so
+  # https://api.studio.nebius.com/v1 reads NEBIUS_API_KEY and no secret is
+  # written into this rendered file.
+  base_url: ${LLM_BASE_URL}
   # This budget covers both chat text and tool call arguments. Keep it generous
   # so Hermes can answer at whatever length the task needs and large viking_read
   # calls are never truncated into unrepairable JSON. DeepSeek V4 Flash bills

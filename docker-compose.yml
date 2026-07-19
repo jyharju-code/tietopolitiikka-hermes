@@ -98,6 +98,9 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       MISTRAL_BASE_URL: ${MISTRAL_BASE_URL:-https://api.eu.mistral.ai/v1}
+      # Credential for provider "custom". Hermes picks the env var from the
+      # configured base_url host, so Nebius reads NEBIUS_API_KEY.
+      NEBIUS_API_KEY: ${NEBIUS_API_KEY:-}
       OPENVIKING_ENDPOINT: http://openviking:1933
       OPENVIKING_API_KEY: ${OPENVIKING_API_KEY}
       OPENVIKING_ACCOUNT: tietopolitiikka
