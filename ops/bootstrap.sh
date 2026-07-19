@@ -27,9 +27,11 @@ install -d -m 0700 \
   "${DATA_ROOT}/hermes/memories" \
   "${DATA_ROOT}/hermes/skills/tietopolitiikka-memory" \
   "${DATA_ROOT}/hermes/skills/tietopolitiikka-files" \
+  "${DATA_ROOT}/hermes/skills/tietopolitiikka-site" \
   "${DATA_ROOT}/hermes/dashboard-files" \
   "${DATA_ROOT}/hermes/dashboard-files/uploads" \
   "${DATA_ROOT}/hermes/dashboard-files/artifacts" \
+  "${DATA_ROOT}/hermes/dashboard-files/artifacts/tietopolitiikkasite" \
   "${DATA_ROOT}/openviking" \
   "${DATA_ROOT}/ollama" \
   "${DATA_ROOT}/telegram-bot-api" \
@@ -44,6 +46,7 @@ install -m 0600 "${REPO_ROOT}/config/hermes/memories/MEMORY.md" "${DATA_ROOT}/he
 install -m 0600 "${REPO_ROOT}/config/hermes/memories/USER.md" "${DATA_ROOT}/hermes/memories/USER.md"
 install -m 0600 "${REPO_ROOT}/skills/tietopolitiikka-memory/SKILL.md" "${DATA_ROOT}/hermes/skills/tietopolitiikka-memory/SKILL.md"
 install -m 0600 "${REPO_ROOT}/skills/tietopolitiikka-files/SKILL.md" "${DATA_ROOT}/hermes/skills/tietopolitiikka-files/SKILL.md"
+install -m 0600 "${REPO_ROOT}/skills/tietopolitiikka-site/SKILL.md" "${DATA_ROOT}/hermes/skills/tietopolitiikka-site/SKILL.md"
 
 python3 "${REPO_ROOT}/ops/render-config.py"
 chown -R 10000:10000 "${DATA_ROOT}/hermes"
