@@ -14,16 +14,37 @@ is marked `noindex` and is not the live site.
 
 ## Where the site lives
 
-Build into this directory and nowhere else:
+The site is a Hugo project on the volume:
 
 ```
-/opt/data/dashboard-files/artifacts/tietopolitiikkasite/
+/opt/data/tietopolitiikkasite/          source: hugo.toml, content/, layouts/
+/opt/data/tietopolitiikkasite/public/   rendered output, this is what ships
 ```
 
-`index.html` at that root is the front page. Subpages are plain paths, for
-example `tietopolitiikka/index.html` serves `/tietopolitiikka`. The directory is
-under the dashboard files root, so every file you write is immediately visible
-to the group in the dashboard and can be sent into the chat with a `MEDIA:` tag.
+Hugo is at `/opt/data/bin/hugo` and is not on PATH, so call it by full path.
+Build with `cd /opt/data/tietopolitiikkasite && /opt/data/bin/hugo --gc --minify`.
+
+Edit the source and rebuild. Never hand-edit files under `public/`, because the
+next build overwrites them.
+
+The operator publishes `public/`, so a change only reaches the test site after
+you have rebuilt. Say explicitly in your reply whether you rebuilt.
+
+## Keep the test site out of search engines
+
+This environment must not be indexed while it is a draft. Two things enforce it,
+both in the source tree, so they survive a rebuild:
+
+| File | Effect |
+| --- | --- |
+| `layouts/robots.txt` | `Disallow: /` for every crawler |
+| `layouts/partials/extend_head.html` | `noindex, nofollow` meta on every page |
+
+PaperMod calls `extend_head.html` from its head partial. Newer Hugo looks in
+`layouts/_partials/`, older in `layouts/partials/`, so both copies exist and
+must stay in sync. Do not delete either, and do not set `enableRobotsTXT` to
+false, which would drop the robots rule. Lifting the block is an operator
+decision, never yours.
 
 ## You cannot publish, and must not claim otherwise
 

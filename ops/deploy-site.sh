@@ -14,9 +14,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT="tietopolitiikkasite"
 PRODUCTION_PROJECT="tietopolitiikka"
-REMOTE="${SITE_REMOTE:-root@204.168.230.73}"
+# The host and key stay out of this public repository. Set them in the
+# environment, or in a gitignored ops/deploy-site.env next to this script.
+if [[ -f "${REPO_ROOT}/ops/deploy-site.env" ]]; then
+  # shellcheck disable=SC1091
+  source "${REPO_ROOT}/ops/deploy-site.env"
+fi
+: "${SITE_REMOTE:?Set SITE_REMOTE=user@host, or put it in ops/deploy-site.env}"
+REMOTE="${SITE_REMOTE}"
 REMOTE_KEY="${SITE_REMOTE_KEY:-${HOME}/.ssh/hermes_ed25519}"
-REMOTE_DIR="/srv/tietopolitiikka-hermes/hermes/dashboard-files/artifacts/${PROJECT}"
+# The agent keeps a Hugo project on the volume and publishes its rendered
+# output. Deploy the build, never the source tree.
+REMOTE_DIR="/srv/tietopolitiikka-hermes/hermes/${PROJECT}/public"
 
 if [[ "${PROJECT}" == "${PRODUCTION_PROJECT}" ]]; then
   echo "Refusing to deploy: target is the production dashboard project." >&2
