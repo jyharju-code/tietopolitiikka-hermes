@@ -21,8 +21,12 @@ The site is a Hugo project on the volume:
 /opt/data/tietopolitiikkasite/public/   rendered output, this is what ships
 ```
 
-Hugo is at `/opt/data/bin/hugo` and is not on PATH, so call it by full path.
-Build with `cd /opt/data/tietopolitiikkasite && /opt/data/bin/hugo --gc --minify`.
+Build with `cd /opt/data/tietopolitiikkasite && hugo --gc --minify`.
+
+Hugo ships in the image at a pinned version and resolves on PATH in every
+shell, so call it as plain `hugo`. If you ever find it missing, say so rather
+than downloading your own copy: a binary you fetch into the data volume is
+invisible to the next deployment and pins no version.
 
 Edit the source and rebuild. Never hand-edit files under `public/`, because the
 next build overwrites them.

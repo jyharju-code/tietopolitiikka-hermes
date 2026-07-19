@@ -158,6 +158,16 @@ class RepositorySafetyTests(unittest.TestCase):
         self.assertIn("/etc/profile.d", dockerfile)
         self.assertIn("PATH=/opt/hermes/.venv/bin:$PATH", dockerfile)
 
+    def test_hugo_is_pinned_in_the_image(self):
+        # A Hugo downloaded onto the data volume at runtime is invisible to a
+        # fresh deployment and pins no version. It would also have to live in a
+        # directory the agent can write, which must never join PATH.
+        dockerfile = (ROOT / "images/hermes/Dockerfile").read_text(encoding="utf-8")
+        self.assertRegex(dockerfile, r"ARG HUGO_VERSION=\d+\.\d+\.\d+")
+        self.assertIn("hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz", dockerfile)
+        self.assertIn("-C /usr/local/bin hugo", dockerfile)
+        self.assertNotIn("/opt/data/bin", dockerfile)
+
 
 class LocalIngestTests(unittest.TestCase):
     def setUp(self):

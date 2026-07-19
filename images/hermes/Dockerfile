@@ -17,6 +17,22 @@ RUN apt-get update \
        python-docx \
        python-pptx
 
+# Hugo builds the tietopolitiikka test site. It belongs in the image rather
+# than downloaded onto the data volume at runtime: a volume copy is invisible
+# to a fresh deployment, pins no version anywhere in source, and would have to
+# live in an agent-writable directory. Putting that directory on PATH would let
+# anything able to write there shadow curl, git or python3, which is a poor
+# trade for an agent that reads untrusted documents all day. /usr/local/bin is
+# root owned and already on PATH for both login and non-login shells.
+ARG HUGO_VERSION=0.164.0
+RUN curl -fsSL -o /tmp/hugo.tar.gz \
+      "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz" \
+    && tar -xzf /tmp/hugo.tar.gz -C /usr/local/bin hugo \
+    && rm /tmp/hugo.tar.gz \
+    && chown root:root /usr/local/bin/hugo \
+    && chmod 0755 /usr/local/bin/hugo \
+    && hugo version
+
 # The agent's terminal tool runs commands through a login shell, and a login
 # shell resets PATH to the system default. That hides /opt/hermes/.venv, so
 # `python3` resolves to /usr/bin/python3 and every document library installed
